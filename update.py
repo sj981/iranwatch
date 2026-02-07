@@ -199,12 +199,22 @@ def fetch_metaculus():
     print("[Metaculus] Fetching Iran questions...")
 
     try:
+        # Try the v2 API first, fall back to legacy
         resp = requests.get(
-            "https://www.metaculus.com/api/questions/",
-            params={"search": "iran", "status": "open", "limit": 20, "type": "binary"},
+            "https://www.metaculus.com/api2/questions/",
+            params={"search": "iran", "status": "open", "limit": 20, "type": "binary",
+                    "order_by": "-activity"},
             timeout=15,
             headers={"Accept": "application/json"},
         )
+        if resp.status_code == 404:
+            # Try alternative endpoint
+            resp = requests.get(
+                "https://www.metaculus.com/api/questions/",
+                params={"search": "iran", "status": "open", "limit": 20},
+                timeout=15,
+                headers={"Accept": "application/json"},
+            )
         resp.raise_for_status()
         data = resp.json()
 
@@ -236,7 +246,14 @@ def fetch_centcom_rss():
     print("[CENTCOM] Fetching RSS feed...")
 
     try:
-        resp = requests.get("https://www.centcom.mil/RSS/", timeout=15)
+        headers = {"User-Agent": "IranWatch/1.0 (OSINT Monitor; +https://github.com)"}
+        resp = requests.get("https://www.centcom.mil/RSS/", headers=headers, timeout=15)
+        if resp.status_code == 403:
+            # Try alternative CENTCOM feed
+            resp = requests.get(
+                "https://www.centcom.mil/MEDIA/PRESS-RELEASES/",
+                headers=headers, timeout=15
+            )
         resp.raise_for_status()
         # Simple XML parsing for titles — no external dependency needed
         import re
@@ -467,20 +484,26 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
     html = html.replace("{{TIME_STR}}", time_str)
     html = html.replace("{{THREAT_LEVEL}}", threat_level)
     html = html.replace("{{THREAT_LEVEL_LOWER}}", tl_lower)
-    html = html.replace("{{THREAT_SUMMARY}}", analysis.get("threat_summary", ""))
-    html = html.replace("{{KEY_JUDGMENT}}", analysis.get("key_judgment", ""))
-    html = html.replace("{{POSTURE_CHANGE}}", analysis.get("posture_change_24h", ""))
-    html = html.replace("{{OVERNIGHT_SUMMARY}}", analysis.get("overnight_summary", ""))
+    # Helper: Claude sometimes returns lists instead of strings
+    def s(val):
+        if isinstance(val, list):
+            return "<br>".join(str(item) for item in val)
+        return str(val) if val else ""
+
+    html = html.replace("{{THREAT_SUMMARY}}", s(analysis.get("threat_summary", "")))
+    html = html.replace("{{KEY_JUDGMENT}}", s(analysis.get("key_judgment", "")))
+    html = html.replace("{{POSTURE_CHANGE}}", s(analysis.get("posture_change_24h", "")))
+    html = html.replace("{{OVERNIGHT_SUMMARY}}", s(analysis.get("overnight_summary", "")))
     html = html.replace("{{ACTIVITY_GROUPS}}", groups_html)
     html = html.replace("{{MARKETS_HTML}}", markets_html)
-    html = html.replace("{{MARKETS_SUMMARY}}", analysis.get("prediction_markets_summary", ""))
+    html = html.replace("{{MARKETS_SUMMARY}}", s(analysis.get("prediction_markets_summary", "")))
     html = html.replace("{{MIL_AIRCRAFT_HTML}}", mil_html)
     html = html.replace("{{MIL_COUNT}}", str(opensky.get("mil_count", 0)))
     html = html.replace("{{TOTAL_AIRCRAFT}}", str(opensky.get("total_aircraft", 0)))
     html = html.replace("{{FEEDS_HTML}}", feeds_html)
     html = html.replace("{{CENTCOM_HTML}}", centcom_html)
-    html = html.replace("{{DIPLOMATIC_SUMMARY}}", analysis.get("diplomatic_summary", ""))
-    html = html.replace("{{IW_UPDATES}}", analysis.get("iw_updates", ""))
+    html = html.replace("{{DIPLOMATIC_SUMMARY}}", s(analysis.get("diplomatic_summary", "")))
+    html = html.replace("{{IW_UPDATES}}", s(analysis.get("iw_updates", "")))
 
     return html
 
