@@ -1,0 +1,41 @@
+name: Daily Iran Watch Update
+
+# Runs at 0500 UTC (= 0500 GMT in winter, 0400 GMT+1 in summer)
+# Change to '0 4 * * *' during British Summer Time (late March-late October)
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to push updated HTML
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run update script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENSKY_CLIENT_ID: ${{ secrets.OPENSKY_CLIENT_ID }}
+          OPENSKY_CLIENT_SECRET: ${{ secrets.OPENSKY_CLIENT_SECRET }}
+        run: python update.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "Iran Watch Bot"
+          git config user.email "iranwatch-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "🔄 Daily update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
