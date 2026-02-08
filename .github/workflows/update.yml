@@ -32,10 +32,11 @@ jobs:
           OPENSKY_CLIENT_SECRET: ${{ secrets.OPENSKY_CLIENT_SECRET }}
         run: python update.py
 
-      - name: Commit and push if changed
+      -- name: Commit and push if changed
         run: |
           git config user.name "Iran Watch Bot"
           git config user.email "iranwatch-bot@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "🔄 Daily update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase
           git push
