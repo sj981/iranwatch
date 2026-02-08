@@ -356,8 +356,7 @@ Your output must be a JSON object with exactly these keys:
   "threat_level": "HIGH" or "CRITICAL" or "ELEVATED" or "ROUTINE",
   "threat_summary": "2-3 sentence summary explaining the threat level and why",
   "key_judgment": "IC-style key judgment paragraph with confidence level",
-  "posture_change_24h": "One clear sentence: what changed in force posture in the last 24h",
-  "overnight_summary": "Paragraph summarizing overnight diplomatic/military developments",
+  "overnight_summary": "2-3 sentences: what changed in the last 24 hours — cover both force posture changes (new deployments, aircraft movements, repositioning) and diplomatic/military developments. Be specific about what is new vs unchanged.",
   "activity_groups": [
     {"title": "Group Title", "icon": "critical|notable|routine", "body": "Summary with [Source] tags"}
   ],
@@ -420,8 +419,7 @@ def generate_fallback_analysis(opensky, polymarket, metaculus, centcom):
         "threat_level": "HIGH",
         "threat_summary": f"US military posture in CENTCOM AOR remains elevated. OpenSky detected {opensky.get('mil_count', 'unknown')} possible military aircraft in the ME bounding box. Diplomatic talks are ongoing but no breakthrough reported. {pm_summary}",
         "key_judgment": "We assess with moderate confidence that the current US military buildup is designed to create credible strike options while maximizing diplomatic leverage. The force posture is sufficient for limited precision strikes if ordered, though key pre-strike indicators (CSAR forward-staging, NOTAMs, embassy evacuations) have not been publicly confirmed. [AUTO-GENERATED — Claude API key not configured]",
-        "posture_change_24h": "Automated data collection detected no major new deployments in the past 24 hours; force posture appears unchanged from the previous day.",
-        "overnight_summary": "This is an automatically generated summary. For full AI-powered analysis, add your ANTHROPIC_API_KEY to GitHub Secrets. Latest CENTCOM releases: " + "; ".join(centcom.get("releases", [])[:3]),
+        "overnight_summary": "This is an automatically generated summary. No major changes in force posture detected in the past 24 hours. For full AI-powered analysis, add your ANTHROPIC_API_KEY to GitHub Secrets. Latest CENTCOM releases: " + "; ".join(centcom.get("releases", [])[:3]),
         "activity_groups": [
             {"title": "Data Collection Summary", "icon": "routine",
              "body": f"OpenSky: {opensky.get('mil_count', 0)} military aircraft detected. Polymarket: {len(pm_markets)} Iran markets tracked. Metaculus: {len(metaculus.get('questions', []))} questions found. CENTCOM: {len(centcom.get('releases', []))} releases. [Automated]"}
@@ -446,15 +444,49 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
 
     # Format prediction markets for display
     markets_html = ""
+
+    # Alert banner for unusual market movements
+    market_alerts = polymarket.get("alerts", [])
+    if market_alerts:
+        alerts_inner = "".join(f'<div style="margin-bottom:6px">{a}</div>' for a in market_alerts)
+        markets_html += f"""
+        <div style="background:rgba(232,64,64,0.08);border:1px solid rgba(232,64,64,0.25);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--accent-amber)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-red);margin-bottom:8px">⚠ Unusual Market Activity Detected</div>
+          {alerts_inner}
+        </div>"""
+
     for m in polymarket.get("markets", []):
         prob = m["probability"]
         col = "var(--accent-red)" if prob >= 60 else "var(--accent-amber)" if prob >= 40 else "var(--text-secondary)"
         vol = float(m.get("volume", 0))
         vol_str = f"${vol/1e6:.0f}M" if vol >= 1e6 else f"${vol/1e3:.0f}K" if vol >= 1e3 else f"${vol:.0f}"
+
+        # Delta badge
+        delta = m.get("prob_delta")
+        delta_html = ""
+        if delta is not None and delta != 0:
+            arrow = "▲" if delta > 0 else "▼"
+            dcol = "var(--accent-red)" if delta > 0 else "var(--accent-green)" if delta < 0 else "var(--text-muted)"
+            # Highlight big moves
+            if abs(delta) >= 5:
+                delta_html = f'<span style="color:{dcol};font-weight:600;font-size:12px;margin-left:8px">{arrow}{abs(delta)}pts</span>'
+            else:
+                delta_html = f'<span style="color:{dcol};font-size:11px;margin-left:8px">{arrow}{abs(delta)}pts</span>'
+        elif delta is not None and delta == 0:
+            delta_html = '<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span>'
+
+        # Volume spike indicator
+        vol_ratio = m.get("vol_ratio")
+        vol_badge = ""
+        if vol_ratio and vol_ratio >= 3.0:
+            vol_badge = f' · <span style="color:var(--accent-red)">🔺 {vol_ratio}x vol</span>'
+        elif vol_ratio and vol_ratio >= 2.0:
+            vol_badge = f' · <span style="color:var(--accent-amber)">{vol_ratio}x vol</span>'
+
         markets_html += f"""
         <div class="mrow">
-          <div class="mq">{m['question']}<span class="mplat">Polymarket · Vol: {vol_str}</span></div>
-          <div class="mprob" style="color:{col}">{prob}%</div>
+          <div class="mq">{m['question']}<span class="mplat">Polymarket · Vol: {vol_str}{vol_badge}</span></div>
+          <div class="mprob" style="color:{col}">{prob}%{delta_html}</div>
         </div>"""
 
     for q in metaculus.get("questions", []):
@@ -483,9 +515,10 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
 
     # Format military aircraft
     mil_html = ""
-    for a in opensky.get("mil_aircraft", [])[:10]:
+    for a in opensky.get("mil_aircraft", [])[:15]:
+        status_badge = ' <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span>' if a.get("status") == "new" else ' <span style="color:var(--text-muted);font-size:10px">returning</span>'
         mil_html += f"""<tr>
-          <td class="aname">{a['callsign']}</td>
+          <td class="aname">{a['callsign']}{status_badge}</td>
           <td class="loc">{a.get('lat', '?')}°N, {a.get('lon', '?')}°E</td>
           <td>{a.get('alt_ft', '?')} ft</td>
           <td class="loc">{a.get('origin', '?')}</td>
@@ -532,7 +565,6 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
 
     html = html.replace("{{THREAT_SUMMARY}}", s(analysis.get("threat_summary", "")))
     html = html.replace("{{KEY_JUDGMENT}}", s(analysis.get("key_judgment", "")))
-    html = html.replace("{{POSTURE_CHANGE}}", s(analysis.get("posture_change_24h", "")))
     html = html.replace("{{OVERNIGHT_SUMMARY}}", s(analysis.get("overnight_summary", "")))
     html = html.replace("{{ACTIVITY_GROUPS}}", groups_html)
     html = html.replace("{{MARKETS_HTML}}", markets_html)
@@ -540,6 +572,24 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
     html = html.replace("{{MIL_AIRCRAFT_HTML}}", mil_html)
     html = html.replace("{{MIL_COUNT}}", str(opensky.get("mil_count", 0)))
     html = html.replace("{{TOTAL_AIRCRAFT}}", str(opensky.get("total_aircraft", 0)))
+
+    # Inject aircraft data as JSON for the map
+    ac_for_map = []
+    new_ac_count = 0
+    for a in opensky.get("mil_aircraft", []):
+        ac_for_map.append({
+            "callsign": a.get("callsign", ""),
+            "lat": a.get("lat"),
+            "lon": a.get("lon"),
+            "alt_ft": a.get("alt_ft"),
+            "origin": a.get("origin", ""),
+            "status": a.get("status", "new"),
+        })
+        if a.get("status") == "new":
+            new_ac_count += 1
+    html = html.replace("{{AIRCRAFT_JSON}}", json.dumps(ac_for_map))
+    html = html.replace("{{NEW_AC_COUNT}}", str(new_ac_count))
+
     html = html.replace("{{FEEDS_HTML}}", feeds_html)
     html = html.replace("{{CENTCOM_HTML}}", centcom_html)
     html = html.replace("{{DIPLOMATIC_SUMMARY}}", s(analysis.get("diplomatic_summary", "")))
@@ -709,11 +759,7 @@ table.pt{width:100%;border-collapse:collapse}
       <div class="atext">{{KEY_JUDGMENT}}<div class="conf mod">Moderate Confidence</div></div>
     </div>
     <div class="abox" style="border-left:3px solid var(--accent-blue)">
-      <div class="alabel blue">24-Hour Posture Change</div>
-      <div class="atext">{{POSTURE_CHANGE}}</div>
-    </div>
-    <div class="abox" style="border-left:3px solid var(--accent-red)">
-      <div class="alabel red">What Changed Overnight</div>
+      <div class="alabel blue">What Changed — Last 24 Hours</div>
       <div class="atext">{{OVERNIGHT_SUMMARY}}</div>
     </div>
   </div>
@@ -735,6 +781,106 @@ table.pt{width:100%;border-collapse:collapse}
   </div>
   <div class="srcs"><span class="stag"><a href="https://opensky-network.org" target="_blank">OpenSky Network API</a></span><span class="stag">Free, rate-limited</span></div>
 </div>
+
+<div class="card full" style="margin-bottom:28px">
+  <div class="ch"><span class="ct">New Military Activity — Last 24 Hours</span><span class="badge warn">{{NEW_AC_COUNT}} NEW</span></div>
+  <div style="position:relative;width:100%;height:500px;background:#0d1117;overflow:hidden" id="mapWrap">
+    <canvas id="mapCanvas"></canvas>
+    <div id="tooltip" style="position:absolute;background:#1a1f2b;border:1px solid #2a3148;border-radius:4px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:10;max-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+  </div>
+  <div style="display:flex;gap:16px;padding:12px 20px;border-top:1px solid var(--border);flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><div style="width:10px;height:10px;border-radius:50%;background:#e84040;box-shadow:0 0 6px #e84040"></div>NEW — Airlift</div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><div style="width:10px;height:10px;border-radius:50%;background:#4088e8;box-shadow:0 0 6px #4088e8"></div>NEW — Tanker</div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><div style="width:10px;height:10px;border-radius:50%;background:#e8a020;box-shadow:0 0 6px #e8a020"></div>NEW — ISR/AWACS</div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><div style="width:10px;height:10px;border-radius:50%;background:#30c060;box-shadow:0 0 6px #30c060"></div>NEW — Strike</div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><div style="width:10px;height:10px;border-radius:50%;background:#3a4158;border:1px solid #565e73"></div>Still present (seen yesterday)</div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted)"><svg width="12" height="12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="#565e73" stroke-width="1" stroke-dasharray="2 2"/></svg>US/Coalition Base</div>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);padding:8px 20px 12px;border-top:1px solid rgba(30,36,51,0.5)">⚠ Bright markers = aircraft NOT seen in previous scan (new arrivals). Dim markers = still present from yesterday. Most military flights do not broadcast ADS-B — this is a partial picture.</div>
+</div>
+
+<script>
+(function(){
+const aircraft = {{AIRCRAFT_JSON}};
+const bases = [
+  {name:"Al Udeid AB",lat:25.117,lon:51.315},{name:"Al Dhafra AB",lat:24.248,lon:54.547},
+  {name:"Ali Al Salem AB",lat:29.346,lon:47.521},{name:"Muwaffaq Salti AB",lat:32.356,lon:36.259},
+  {name:"Prince Sultan AB",lat:24.062,lon:47.580},{name:"Camp Lemonnier",lat:11.547,lon:43.155},
+  {name:"Incirlik AB",lat:37.002,lon:35.426},{name:"RAF Akrotiri",lat:34.590,lon:32.988},
+  {name:"NSA Bahrain",lat:26.236,lon:50.577}
+];
+const borders={"Iran":[[25.1,61.6],[25.3,58.9],[26.3,56.3],[27.2,54.7],[26.5,53.4],[27.0,51.5],[29.8,50.3],[30.4,48.8],[31.0,47.7],[32.3,47.4],[33.7,46.0],[35.1,45.4],[36.6,45.0],[37.4,44.8],[38.3,44.4],[39.4,44.0],[39.8,47.8],[39.3,48.0],[38.9,48.9],[37.6,49.1],[37.3,50.1],[36.7,53.9],[37.4,55.4],[37.3,57.2],[35.8,60.5],[34.5,60.9],[33.7,60.5],[31.3,61.7],[27.2,63.3],[25.1,61.6]],"Iraq":[[29.1,47.4],[30.4,47.0],[31.0,47.7],[32.3,47.4],[33.7,46.0],[35.1,45.4],[36.6,45.0],[37.4,44.8],[37.1,42.4],[36.8,41.0],[33.4,40.9],[32.0,39.0],[30.0,40.0],[29.1,44.7],[29.1,47.4]],"Saudi Arabia":[[16.4,42.7],[17.5,43.4],[18.2,44.2],[19.0,45.0],[20.0,45.0],[21.5,49.0],[22.5,50.8],[24.0,52.0],[24.2,51.6],[25.8,50.8],[27.0,49.6],[28.5,48.4],[29.1,47.4],[29.1,44.7],[28.0,37.0],[25.0,37.5],[20.0,40.0],[17.8,42.0],[16.4,42.7]],"UAE":[[24.0,52.0],[24.2,53.5],[24.2,54.5],[25.6,56.3],[26.1,56.0],[24.9,55.8],[24.3,55.5],[24.0,52.0]],"Oman":[[16.6,53.0],[17.0,55.0],[20.0,57.5],[21.5,59.8],[22.8,59.8],[23.6,58.5],[25.3,57.0],[26.3,56.3],[25.6,56.3],[24.2,54.5],[24.2,53.5],[24.0,52.0],[22.5,55.1],[20.0,55.8],[16.6,53.0]],"Kuwait":[[28.5,48.4],[29.1,47.4],[30.1,47.7],[29.9,48.4],[29.4,48.4],[28.5,48.4]],"Qatar":[[24.5,50.8],[25.3,50.7],[26.2,51.2],[26.1,51.6],[25.4,51.6],[24.5,51.3],[24.5,50.8]],"Turkey":[[36.0,36.0],[36.2,33.0],[36.8,30.6],[37.0,28.0],[38.4,26.2],[40.0,26.0],[41.0,28.8],[42.0,33.4],[41.5,36.4],[42.5,43.5],[41.2,43.5],[40.6,44.0],[39.8,44.5],[38.3,44.4],[37.4,44.8],[37.1,42.4],[36.8,41.0],[37.0,38.0],[36.7,37.0],[36.0,36.0]],"Syria":[[32.3,35.8],[33.0,35.9],[34.7,35.8],[35.5,36.0],[36.0,36.0],[36.7,37.0],[37.0,38.0],[36.8,41.0],[33.4,40.9],[32.0,39.0],[32.3,35.8]],"Jordan":[[29.1,34.9],[29.5,35.0],[31.5,35.5],[32.3,35.8],[32.0,39.0],[30.0,40.0],[29.1,36.0],[29.1,34.9]],"Israel":[[29.5,34.9],[31.3,34.3],[32.5,34.9],[33.3,35.6],[32.3,35.8],[31.5,35.5],[29.5,35.0],[29.5,34.9]],"Egypt":[[22.0,25.0],[22.0,36.9],[29.5,34.9],[31.3,34.3],[31.5,32.0],[30.8,29.0],[31.5,25.0],[22.0,25.0]],"Yemen":[[12.6,43.3],[13.0,45.0],[14.0,47.0],[15.5,52.2],[16.6,53.0],[20.0,55.8],[19.0,52.0],[18.2,50.0],[17.5,49.0],[16.5,47.5],[16.0,44.5],[13.0,43.4],[12.6,43.3]],"Pakistan":[[25.1,61.6],[25.2,63.5],[25.6,64.7],[26.5,66.0],[27.5,67.0],[28.2,68.5],[30.0,66.5],[31.0,67.0],[33.0,69.5],[35.5,71.0],[37.0,71.5],[37.1,67.8],[33.7,60.5],[31.3,61.7],[27.2,63.3],[25.1,61.6]],"Afghanistan":[[29.4,64.0],[30.5,62.0],[33.7,60.5],[37.1,67.8],[37.0,71.5],[35.5,71.0],[33.0,69.5],[31.0,67.0],[30.0,66.5],[29.4,64.0]],"Somalia":[[11.5,43.2],[12.0,44.0],[11.5,49.0],[10.0,51.0],[5.0,48.0],[1.6,41.6],[4.0,42.0],[8.0,44.0],[11.5,43.2]],"Eritrea":[[12.6,43.3],[13.0,42.4],[15.0,39.5],[18.0,38.5],[18.0,40.0],[15.5,40.5],[13.0,43.0],[12.6,43.3]],"Djibouti":[[11.0,41.8],[11.5,43.2],[12.7,43.3],[12.0,42.4],[11.0,41.8]]};
+const labels=[[32,"IRAN",53],[33,"IRAQ",43.5],[24,"SAUDI ARABIA",45],[35,"TURKEY",35],[34,"SYRIA",38],[25,"UAE",54.5],[25.5,"QATAR",51.2],[31,"JORDAN",37],[15,"YEMEN",47],[28,"OMAN",57],[14,"SOMALIA",46],[33,"AFG",66],[30,"PAK",65],[27,"EGYPT",30]];
+const VIEW={cenLat:27,cenLon:48,scale:14};
+const wrap=document.getElementById('mapWrap');
+const canvas=document.getElementById('mapCanvas');
+const ctx=canvas.getContext('2d');
+const tip=document.getElementById('tooltip');
+let W,H;
+function toX(lon){return(lon-VIEW.cenLon)*VIEW.scale+W/2}
+function toY(lat){return(VIEW.cenLat-lat)*VIEW.scale+H/2}
+function getCat(cs){
+  cs=cs.toUpperCase();
+  const c=[
+    {p:['RCH','REACH','PACK','DUKE','MOOSE','FRED','CARGO','HERK'],t:'Airlift',c:'#e84040'},
+    {p:['ETHYL','JULIET','PEARL','STEEL','SHELL','TEAL','NKAC','PKSN'],t:'Tanker',c:'#4088e8'},
+    {p:['HOMER','TOPCT','JAKE','TITAN','FORTE','MAGIC','SNTRY','REDEYE','OLIVE','MAZDA'],t:'ISR/AWACS',c:'#e8a020'},
+    {p:['DOOM','DEATH','BATT','MYTEE','BONE','VIPER','EAGLE','RAZOR','HAWK','STRIKE','WRATH','BOLT','ASCOT'],t:'Strike',c:'#30c060'}
+  ];
+  for(const g of c)for(const px of g.p)if(cs.startsWith(px))return g;
+  return{t:'Military',c:'#8b93a8'};
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(30,36,51,0.5)';ctx.lineWidth=0.5;
+  for(let lat=-10;lat<=50;lat+=5){ctx.beginPath();ctx.moveTo(toX(10),toY(lat));ctx.lineTo(toX(85),toY(lat));ctx.stroke()}
+  for(let lon=10;lon<=85;lon+=5){ctx.beginPath();ctx.moveTo(toX(lon),toY(-10));ctx.lineTo(toX(lon),toY(50));ctx.stroke()}
+  // Borders
+  ctx.lineWidth=1;ctx.fillStyle='rgba(26,31,43,0.6)';
+  for(const[name,pts]of Object.entries(borders)){
+    ctx.strokeStyle=name==='Iran'?'rgba(232,64,64,0.25)':'#2a3148';
+    ctx.lineWidth=name==='Iran'?2:1;
+    ctx.beginPath();pts.forEach((p,i)=>{const x=toX(p[1]),y=toY(p[0]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.closePath();ctx.fill();ctx.stroke();
+  }
+  // Labels
+  ctx.font='9px IBM Plex Mono,monospace';ctx.fillStyle='#3a4158';ctx.textAlign='center';
+  labels.forEach(([lat,text,lon])=>{const lines=text.split(' ');if(lines.length>1){lines.forEach((l,i)=>ctx.fillText(l,toX(lon),toY(lat)+i*11))}else{ctx.fillText(text,toX(lon),toY(lat))}});
+  // Bases
+  ctx.setLineDash([3,3]);ctx.strokeStyle='#565e73';ctx.lineWidth=1;
+  bases.forEach(b=>{const x=toX(b.lon),y=toY(b.lat);ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.stroke();ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#565e73';ctx.textAlign='left';ctx.fillText(b.name,x+8,y+3)});
+  ctx.setLineDash([]);
+  // Aircraft — returning (dim) first, then new (bright) on top
+  const returning=aircraft.filter(a=>a.status==='returning');
+  const newAc=aircraft.filter(a=>a.status==='new');
+  returning.forEach(ac=>{
+    const x=toX(ac.lon),y=toY(ac.lat);
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#3a4158';ctx.fill();ctx.strokeStyle='#565e73';ctx.lineWidth=1;ctx.stroke();
+    ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#565e73';ctx.textAlign='left';ctx.fillText(ac.callsign,x+8,y+3);
+  });
+  newAc.forEach(ac=>{
+    const x=toX(ac.lon),y=toY(ac.lat);const cat=getCat(ac.callsign);
+    // Glow
+    const g=ctx.createRadialGradient(x,y,0,x,y,20);g.addColorStop(0,cat.c+'40');g.addColorStop(1,cat.c+'00');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);ctx.fill();
+    // Dot
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=cat.c+'90';ctx.fill();ctx.strokeStyle=cat.c;ctx.lineWidth=2;ctx.stroke();
+    // Label
+    ctx.font='bold 9px IBM Plex Mono,monospace';ctx.fillStyle=cat.c;ctx.textAlign='left';ctx.fillText(ac.callsign,x+10,y-4);ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#8b93a8';ctx.fillText(cat.t,x+10,y+7);
+  });
+}
+function resize(){W=wrap.clientWidth;H=wrap.clientHeight;canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw()}
+resize();window.addEventListener('resize',resize);
+// Tooltip
+let hov=null;
+wrap.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let found=null;
+  for(const ac of aircraft){if(Math.hypot(mx-toX(ac.lon),my-toY(ac.lat))<16){found=ac;break}}
+  if(!found)for(const b of bases){if(Math.hypot(mx-toX(b.lon),my-toY(b.lat))<12){found={callsign:b.name,origin:'',alt_ft:null,status:'base'};break}}
+  if(found&&found!==hov){hov=found;const cat=found.status==='base'?{t:'US/Coalition Base',c:'#565e73'}:getCat(found.callsign);const st=found.status==='new'?'<span style="color:#40c8e8">★ NEW</span>':found.status==='returning'?'Still present':'';let h='<div style="font-weight:600;color:#40c8e8;font-size:12px">'+found.callsign+'</div>';if(found.origin)h+='<div style="color:#8b93a8;margin-top:2px;font-size:10px">'+found.origin+'</div>';if(found.alt_ft)h+='<div style="color:#8b93a8;font-size:10px">'+found.alt_ft.toLocaleString()+' ft</div>';h+='<div style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;margin-top:4px;background:'+cat.c+'20;color:'+cat.c+'">'+cat.t+'</div>';if(st)h+='<div style="margin-top:4px;font-size:9px">'+st+'</div>';tip.innerHTML=h;tip.style.left=(mx+16)+'px';tip.style.top=(my-10)+'px';tip.style.opacity='1'}else if(!found){hov=null;tip.style.opacity='0'}
+});
+wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
+})();
+</script>
 
 <div class="sec">Forecasting Panel — Prediction Markets</div>
 <div class="card full" style="margin-bottom:28px">
@@ -781,11 +927,93 @@ def main():
     print(f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
     print("=" * 60)
 
+    # 0. Load yesterday's history for comparison
+    history_path = os.path.join(os.path.dirname(__file__) or ".", "history.json")
+    prev_callsigns = set()
+    prev_markets = {}  # {question: {probability, volume}}
+    try:
+        with open(history_path, "r") as f:
+            history = json.load(f)
+            prev_callsigns = set(history.get("callsigns", []))
+            for pm in history.get("markets", []):
+                prev_markets[pm.get("question", "")] = pm
+            print(f"[History] Loaded {len(prev_callsigns)} callsigns, {len(prev_markets)} markets from previous run")
+    except FileNotFoundError:
+        print("[History] No previous history — first run, all aircraft will show as NEW")
+    except Exception as e:
+        print(f"[History] Error loading history: {e}")
+
     # 1. Fetch all data sources
     opensky = fetch_opensky()
     polymarket = fetch_polymarket()
     metaculus = fetch_metaculus()
     centcom = fetch_centcom_rss()
+
+    # 1b. Tag aircraft as new or returning
+    current_callsigns = set()
+    new_count = 0
+    for ac in opensky.get("mil_aircraft", []):
+        cs = ac["callsign"]
+        current_callsigns.add(cs)
+        if cs in prev_callsigns:
+            ac["status"] = "returning"
+        else:
+            ac["status"] = "new"
+            new_count += 1
+    print(f"[History] {new_count} NEW aircraft, {len(current_callsigns) - new_count} returning")
+
+    # 1c. Compute market deltas (probability changes and volume spikes)
+    market_alerts = []
+    PROB_SPIKE_THRESHOLD = 5     # Flag if probability moved ±5 points
+    VOLUME_SPIKE_MULTIPLE = 3.0  # Flag if volume is 3x yesterday's
+    for m in polymarket.get("markets", []):
+        q = m["question"]
+        prev = prev_markets.get(q)
+        if prev:
+            prob_delta = m["probability"] - prev.get("probability", m["probability"])
+            m["prob_delta"] = prob_delta
+            prev_vol = float(prev.get("volume", 0))
+            curr_vol = float(m.get("volume", 0))
+            vol_ratio = curr_vol / prev_vol if prev_vol > 0 else 0
+            m["vol_ratio"] = round(vol_ratio, 1)
+            # Flag unusual moves
+            if abs(prob_delta) >= PROB_SPIKE_THRESHOLD:
+                direction = "UP" if prob_delta > 0 else "DOWN"
+                market_alerts.append(f"⚡ {q}: probability moved {direction} {abs(prob_delta)} pts (was {prev.get('probability', '?')}%, now {m['probability']}%)")
+                print(f"[Markets] ALERT: {q} moved {prob_delta:+d} pts")
+            if vol_ratio >= VOLUME_SPIKE_MULTIPLE and curr_vol > 10000:
+                market_alerts.append(f"📈 {q}: trading volume surge — {vol_ratio:.1f}x yesterday's level")
+                print(f"[Markets] ALERT: {q} volume spike {vol_ratio:.1f}x")
+        else:
+            m["prob_delta"] = None
+            m["vol_ratio"] = None
+    
+    if market_alerts:
+        print(f"[Markets] {len(market_alerts)} unusual market movements detected!")
+    else:
+        print("[Markets] No unusual movements detected")
+
+    # Store market alerts on the polymarket dict so generate_html can use them
+    polymarket["alerts"] = market_alerts
+
+    # 1d. Save today's data for tomorrow's comparison
+    try:
+        market_snapshot = []
+        for m in polymarket.get("markets", []):
+            market_snapshot.append({
+                "question": m["question"],
+                "probability": m["probability"],
+                "volume": m.get("volume", "0"),
+            })
+        with open(history_path, "w") as f:
+            json.dump({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "callsigns": list(current_callsigns),
+                "markets": market_snapshot,
+            }, f)
+        print(f"[History] Saved {len(current_callsigns)} callsigns, {len(market_snapshot)} markets to history.json")
+    except Exception as e:
+        print(f"[History] Error saving history: {e}")
 
     # 2. Generate AI analysis
     analysis = generate_analysis(opensky, polymarket, metaculus, centcom)
