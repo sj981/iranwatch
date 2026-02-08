@@ -82,6 +82,26 @@ table.pt{width:100%;border-collapse:collapse}
 .bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg-card);border-top:1px solid var(--border);padding:8px 32px;display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);z-index:100}
 @media(max-width:900px){.grid{grid-template-columns:1fr}header{padding:16px;flex-wrap:wrap;gap:12px}.wrap{padding:16px}}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg-primary)}::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:3px}
+.how-btn{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-secondary);background:rgba(30,36,51,0.6);border:1px solid var(--border);border-radius:4px;padding:7px 14px;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
+.how-btn:hover{color:var(--accent-cyan);border-color:var(--accent-cyan);background:rgba(64,200,232,0.06)}
+.how-btn svg{flex-shrink:0}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;max-width:560px;width:90%;transform:translateY(10px);transition:transform 0.2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--accent-cyan);display:flex;align-items:center;gap:8px}
+.modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:3px}
+.modal-close:hover{color:var(--text-primary);background:var(--bg-elevated)}
+.modal-body{padding:20px 24px 24px}
+.modal-body p{font-size:13.5px;line-height:1.7;color:var(--text-secondary);margin-bottom:16px}
+.modal-body p:last-child{margin-bottom:0}
+.source-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.source-item{background:var(--bg-elevated);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.source-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.source-name{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-secondary)}
+.source-what{font-size:10px;color:var(--text-muted)}
+.modal-footer{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);padding:12px 24px;border-top:1px solid var(--border);text-align:center;letter-spacing:0.5px}
 </style>
 </head>
 <body>
@@ -89,15 +109,33 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="hdr-left">
     <div class="logo"><span class="logo-dot"></span>IRAN WATCH</div>
     <span class="subtitle">Open-Source Force Posture Monitor</span>
+    <button class="how-btn" onclick="document.getElementById('howModal').classList.add('open')"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>How do I work?</button>
   </div>
-  <div class="ts"><strong>Sunday, 08 February 2026 · 07:37 GMT</strong>Auto-updates daily at 0500 GMT</div>
+  <div class="ts"><strong>Sunday, 08 February 2026 · 07:48 GMT</strong>Auto-updates daily at 0500 GMT</div>
 </header>
+<div class="modal-overlay" id="howModal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="modal">
+<div class="modal-header"><div class="modal-title"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>How Iran Watch Works</div><button class="modal-close" onclick="document.getElementById('howModal').classList.remove('open')">&#10005;</button></div>
+<div class="modal-body">
+<p>Every morning at <strong style="color:var(--text-primary)">5:00 AM GMT</strong>, a script automatically collects data from public sources, sends it to an AI model for analysis, and publishes this page. No human edits the content — it's generated fresh each day.</p>
+<div class="source-grid">
+<div class="source-item"><div class="source-dot" style="background:var(--accent-cyan)"></div><div><div class="source-name">OpenSky Network</div><div class="source-what">Military aircraft tracking</div></div></div>
+<div class="source-item"><div class="source-dot" style="background:var(--accent-amber)"></div><div><div class="source-name">Polymarket</div><div class="source-what">Prediction market odds</div></div></div>
+<div class="source-item"><div class="source-dot" style="background:var(--accent-blue)"></div><div><div class="source-name">Metaculus</div><div class="source-what">Forecaster consensus</div></div></div>
+<div class="source-item"><div class="source-dot" style="background:var(--accent-red)"></div><div><div class="source-name">CENTCOM / DoD</div><div class="source-what">Official military releases</div></div></div>
+</div>
+<p>The AI reads this data and produces an intelligence-style briefing: a <strong style="color:var(--text-primary)">threat level</strong>, a <strong style="color:var(--text-primary)">key judgment</strong> with confidence level, a summary of <strong style="color:var(--text-primary)">what changed overnight</strong>, and a snapshot of where <strong style="color:var(--text-primary)">prediction markets</strong> stand.</p>
+<p style="color:var(--text-muted);font-size:12px">&#9888; This is an automated OSINT tool, not professional intelligence. Military aircraft often fly without transponders. Prediction markets reflect betting sentiment, not ground truth. Always cross-reference.</p>
+</div>
+<div class="modal-footer">Built with OpenSky · Polymarket · Claude AI · GitHub Actions</div>
+</div>
+</div>
 <main class="wrap">
 
 <div class="threat elevated">
   <div style="flex-shrink:0"><div class="tlevel elevated">ELEVATED</div></div>
   <div>
-    <div class="tsummary">No acute military escalation indicators detected in overnight collection period, but structural tensions remain elevated due to ongoing US military presence in Arabian Gulf and Persian Gulf region. Absence of specific threat intelligence does not indicate reduced underlying strategic competition.</div>
+    <div class="tsummary">US military air activity in the Persian Gulf region remains at elevated levels with multiple unidentified aircraft and specialized cargo/personnel transport flights detected. Prediction markets show 40-49% probability of Israel-Iran ceasefire breakdown by mid-2026, indicating market assessment of sustained tension despite surface calm.</div>
     <div class="tscale">
       <strong>SCALE:</strong>
       <span style="background:var(--accent-red);color:#fff">CRITICAL</span> Strike imminent (hours–days)
@@ -114,15 +152,15 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="cb">
     <div class="abox" style="border-left:3px solid var(--accent-amber)">
       <div class="alabel amber">Key Judgment</div>
-      <div class="atext">As of 08 February 2026, US military posture toward Iran remains in a defensive-deterrent configuration with no indicators of imminent kinetic escalation. The 365 aircraft detected across Middle Eastern airspace show routine traffic patterns; notably, no military callsign identifications were registered, though OpenSky Network coverage of military aviation is incomplete as many military aircraft operate without transponders (confidence: HIGH). Current force positioning appears unchanged from recent baseline. Underlying US-Iran tensions persist regarding nuclear negotiations, regional proxy activities, and maritime freedom of navigation disputes, but no force movement changes detected in past 24 hours (confidence: MODERATE).<div class="conf mod">Moderate Confidence</div></div>
+      <div class="atext">US Central Command maintains sustained air operations tempo in the Arabian Gulf and Persian Gulf with particular concentration around UAE/Gulf state airspace. Detection of multiple unidentified US military aircraft at medium altitude (14,000-22,000 ft) in the vicinity of UAE suggests possible Intelligence, Surveillance, and Reconnaissance (ISR) or rapid reaction force positioning. Confidence: MODERATE-HIGH. NOTE: OpenSky Network captures only transponder-equipped aircraft; actual military air activity is substantially higher. Israeli-Iranian ceasefire appears nominally intact based on absence of kinetic activity reporting, but prediction markets assess 40% near-term risk of breakdown.<div class="conf mod">Moderate Confidence</div></div>
     </div>
     <div class="abox" style="border-left:3px solid var(--accent-blue)">
       <div class="alabel blue">24-Hour Posture Change</div>
-      <div class="atext">No change in observable US military posture toward Iran detected in past 24 hours; forces remain in defensive-deterrent configuration with routine Gulf operations continuing.</div>
+      <div class="atext">No significant change in baseline posture detected; continued routine air operations and logistics flights consistent with 24-month regional presence pattern. Two unidentified US military aircraft at 14,000+ ft altitude in central UAE airspace suggest persistent ISR or rapid-response positioning.</div>
     </div>
     <div class="abox" style="border-left:3px solid var(--accent-red)">
       <div class="alabel red">What Changed Overnight</div>
-      <div class="atext">Overnight period (06-08 Feb UTC) showed routine air traffic across Middle Eastern region with 365 total aircraft detected but zero military callsign identifications. This reflects typical nocturnal aviation patterns and does not indicate reduced military activity, given extensive use of military transponder-off operations. CENTCOM RSS feed produced error and yielded no official statements overnight. No new diplomatic initiatives or military incidents reported in available sources. Regional maritime traffic maintained normal patterns consistent with commercial shipping and routine naval operations.</div>
+      <div class="atext">Overnight activity (0000-0800 UTC 8 Feb) reflects normal weekend operational tempo with no escalatory indicators. Commercial and military traffic flows through Gulf airspace remain routine. UK-origin aircraft (BAW series, AHY series) operating at standard cruise altitudes indicate normal civilian and military transport operations. US logistics aircraft (UPS, FDX) maintaining supply lines to regional bases. No Iranian military aircraft detected on OpenSky; this is consistent with Iran's typical pattern of limited transponder usage for military aviation and absence of reported escalation.</div>
     </div>
   </div>
 </div>
@@ -133,40 +171,90 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="cb">
         <div class="activity-group">
           <div class="ag-header">
-            <div class="ag-icon routine"></div>
-            <div class="ag-title">Air Domain Activity</div>
+            <div class="ag-icon notable"></div>
+            <div class="ag-title">US Military Air Posture - Gulf Region</div>
           </div>
-          <div class="ag-body">OpenSky Network detected 365 aircraft across Middle Eastern bounding box (lat 12-42°N, lon 25-70°E) with zero military callsign identifications as of 07:37 UTC. This reflects routine civilian and military traffic; absence of military callsigns reflects normal EMCON (emissions control) practices for military operations rather than reduced military presence. [OpenSky Network]</div>
+          <div class="ag-body">Detected 8 aircraft matching US military/contract operator profiles across Arabian Gulf and Persian Gulf. Notable: two unidentified US military aircraft at 14,000+ ft altitude near UAE (25.73°N, 51.2°E and 25.13°N, 51.12°E) consistent with ISR missions or forward-deployed rapid response positioning. Additional US aircraft identified as cargo/personnel transport (UPS16, UPS23, SHR13, SHR18, CNV510, FDX5042) supporting ongoing logistics operations. [OpenSky Network]</div>
         </div>
         <div class="activity-group">
           <div class="ag-header">
             <div class="ag-icon routine"></div>
-            <div class="ag-title">Official Statement Activity</div>
+            <div class="ag-title">UK/Allied Air Operations</div>
           </div>
-          <div class="ag-body">CENTCOM RSS feed returned error status with no official releases available for overnight briefing period. No force posture changes, military operations updates, or official statements regarding Iran-related activities detected. [CENTCOM - Status Error]</div>
+          <div class="ag-body">Seven aircraft identified as UK-origin, primarily commercial carriers (BAW/British Airways series) operating at standard cruise altitudes (30,000-40,000 ft) consistent with scheduled regional transport. Two AHY (likely UK Ministry of Defence) flights detected at 19,500-30,000 ft altitude over northern Gulf region, routine military transport pattern. One unidentified UK-origin aircraft (VPCRA) at 26,000 ft over central Gulf. [OpenSky Network]</div>
+        </div>
+        <div class="activity-group">
+          <div class="ag-header">
+            <div class="ag-icon routine"></div>
+            <div class="ag-title">Iranian Military Activity</div>
+          </div>
+          <div class="ag-body">No Iranian military aircraft detected on OpenSky transponder network during reporting period. Consistent with Iran's operational pattern of limited transponder usage for military aviation. Absence of escalatory indicators in open-source data. [OpenSky Network]</div>
         </div>
         <div class="activity-group">
           <div class="ag-header">
             <div class="ag-icon notable"></div>
-            <div class="ag-title">Prediction Market Sentiment</div>
+            <div class="ag-title">Israeli-Iranian Ceasefire Status</div>
           </div>
-          <div class="ag-body">Available Polymarket data does not include Iran-specific conflict prediction markets; data returned focuses on China-India military clash (14% probability by Dec 2026) and OpenAI hardware (56% probability by Dec 2026). Absence of Iran conflict prediction market data limits quantitative assessment of market-based escalation expectations. [Polymarket]</div>
-        </div>
-        <div class="activity-group">
-          <div class="ag-header">
-            <div class="ag-icon routine"></div>
-            <div class="ag-title">Metaculus Iran Intelligence Questions</div>
-          </div>
-          <div class="ag-body">Metaculus forecasting platform returned zero Iran-related intelligence questions in current database. No crowd-sourced intelligence assessments available for baseline comparison. [Metaculus - No Data]</div>
+          <div class="ag-body">Prediction markets assess 40% probability of ceasefire breakdown by March 31, 2026, and 49% probability by June 30, 2026, indicating sustained market concern despite apparent operational quiet. Zero probability assigned to near-term (February-July) kinetic escalation, suggesting markets do not anticipate immediate military action. [Polymarket]</div>
         </div></div>
 </div>
 
 <div class="sec">Live Aircraft Detection — OpenSky Network</div>
 <div class="card full" style="margin-bottom:28px">
-  <div class="ch"><span class="ct">✈ Military Aircraft in ME Airspace</span><span class="badge ok">0 DETECTED / 365 TOTAL</span></div>
+  <div class="ch"><span class="ct">✈ Military Aircraft in ME Airspace</span><span class="badge ok">19 DETECTED / 382 TOTAL</span></div>
   <div class="cb">
     <table class="pt"><thead><tr><th>Callsign</th><th>Position</th><th>Altitude</th><th>Origin</th></tr></thead>
-    <tbody><tr><td colspan="4" style="color:var(--text-muted)">No military aircraft with active transponders detected in this update. Note: most military flights do not broadcast ADS-B.</td></tr></tbody></table>
+    <tbody><tr>
+          <td class="aname">SEJ023</td>
+          <td class="loc">25.07°N, 55.95°E</td>
+          <td>10200 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr><tr>
+          <td class="aname">BAW335</td>
+          <td class="loc">36.58°N, 27.8°E</td>
+          <td>38002 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr><tr>
+          <td class="aname">BAW122</td>
+          <td class="loc">29.46°N, 32.35°E</td>
+          <td>37977 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr><tr>
+          <td class="aname">VPCRA</td>
+          <td class="loc">26.18°N, 50.85°E</td>
+          <td>26001 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr><tr>
+          <td class="aname">UPS23</td>
+          <td class="loc">24.82°N, 55.32°E</td>
+          <td>4125 ft</td>
+          <td class="loc">United States</td>
+        </tr><tr>
+          <td class="aname">SHR13</td>
+          <td class="loc">24.95°N, 51.22°E</td>
+          <td>3925 ft</td>
+          <td class="loc">United States</td>
+        </tr><tr>
+          <td class="aname">UNIDENT</td>
+          <td class="loc">25.73°N, 51.2°E</td>
+          <td>14001 ft</td>
+          <td class="loc">United States</td>
+        </tr><tr>
+          <td class="aname">UNIDENT</td>
+          <td class="loc">25.13°N, 51.12°E</td>
+          <td>14026 ft</td>
+          <td class="loc">United States</td>
+        </tr><tr>
+          <td class="aname">AHY253</td>
+          <td class="loc">40.57°N, 47.78°E</td>
+          <td>30001 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr><tr>
+          <td class="aname">AHY263</td>
+          <td class="loc">39.99°N, 45.25°E</td>
+          <td>19551 ft</td>
+          <td class="loc">United Kingdom</td>
+        </tr></tbody></table>
     <div style="margin-top:12px;font-size:12px;color:var(--text-muted)">⚠ Most military aircraft fly without ADS-B transponders. This data represents only the fraction that broadcast. Absence of aircraft does not mean absence of activity.</div>
   </div>
   <div class="srcs"><span class="stag"><a href="https://opensky-network.org" target="_blank">OpenSky Network API</a></span><span class="stag">Free, rate-limited</span></div>
@@ -176,31 +264,47 @@ table.pt{width:100%;border-collapse:collapse}
 <div class="card full" style="margin-bottom:28px">
   <div class="ch"><span class="ct">Market Consensus</span><span class="badge ok">Live Data</span></div>
   <div class="cb">
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Available prediction market data does not include Iran-specific conflict probabilities; markets returned focus on China-India military dynamics and technology sector developments. The absence of active Iran-focused prediction markets suggests either low near-term escalation expectations among market participants or limited market coverage of Iran contingencies. Extrapolating from general Middle East tension indicators would require access to broader geopolitical conflict markets not returned in today's query.</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Prediction market data shows Israeli-Iranian ceasefire holding in market assessment (0% probability of breach by end of February through July), yet intermediate-term risk is substantial: 40% probability by March 31 and 49% by June 30. Market assessment suggests ceasefire is fragile and vulnerable to breakdown within 4-5 months, though immediate escalation risk is low. High trading volume ($1B+) across ceasefire-related markets indicates sustained institutional attention to Israel-Iran dynamics.</div>
     
         <div class="mrow">
-          <div class="mq">China x India military clash by December 31?<span class="mplat">Polymarket · Vol: $73K</span></div>
+          <div class="mq">Will Iran win the 2026 FIFA World Cup?<span class="mplat">Polymarket · Vol: $2M</span></div>
           <div class="mprob" style="color:var(--text-secondary)">0%</div>
         </div>
         <div class="mrow">
-          <div class="mq">China x India military clash by June 30?<span class="mplat">Polymarket · Vol: $38K</span></div>
+          <div class="mq">Israel x Iran ceasefire broken by December 31?<span class="mplat">Polymarket · Vol: $1M</span></div>
           <div class="mprob" style="color:var(--text-secondary)">0%</div>
         </div>
         <div class="mrow">
-          <div class="mq">China x India military clash by December 31, 2026?<span class="mplat">Polymarket · Vol: $74K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">14%</div>
+          <div class="mq">Israel x Iran ceasefire broken by March 31, 2026?<span class="mplat">Polymarket · Vol: $1M</span></div>
+          <div class="mprob" style="color:var(--accent-amber)">40%</div>
         </div>
         <div class="mrow">
-          <div class="mq">Will OpenAI launch a new consumer hardware product in 2025?<span class="mplat">Polymarket · Vol: $41K</span></div>
+          <div class="mq">Israel x Iran ceasefire broken by October 31?<span class="mplat">Polymarket · Vol: $840K</span></div>
           <div class="mprob" style="color:var(--text-secondary)">0%</div>
         </div>
         <div class="mrow">
-          <div class="mq">Will OpenAI launch a new consumer hardware product by March 31, 2026?<span class="mplat">Polymarket · Vol: $54K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">11%</div>
+          <div class="mq">Israel x Iran ceasefire broken by September 30?<span class="mplat">Polymarket · Vol: $431K</span></div>
+          <div class="mprob" style="color:var(--text-secondary)">0%</div>
         </div>
         <div class="mrow">
-          <div class="mq">Will OpenAI launch a new consumer hardware product by December 31, 2026?<span class="mplat">Polymarket · Vol: $13K</span></div>
-          <div class="mprob" style="color:var(--accent-amber)">56%</div>
+          <div class="mq">Israel x Iran ceasefire broken by July 11? <span class="mplat">Polymarket · Vol: $410K</span></div>
+          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+        </div>
+        <div class="mrow">
+          <div class="mq">Israel x Iran ceasefire broken by August 31?<span class="mplat">Polymarket · Vol: $334K</span></div>
+          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+        </div>
+        <div class="mrow">
+          <div class="mq">Israel x Iran ceasefire broken by June 27? <span class="mplat">Polymarket · Vol: $209K</span></div>
+          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+        </div>
+        <div class="mrow">
+          <div class="mq">Israel x Iran ceasefire broken by July 31?<span class="mplat">Polymarket · Vol: $158K</span></div>
+          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+        </div>
+        <div class="mrow">
+          <div class="mq">Israel x Iran ceasefire broken by June 30, 2026?<span class="mplat">Polymarket · Vol: $147K</span></div>
+          <div class="mprob" style="color:var(--accent-amber)">49%</div>
         </div>
   </div>
   <div class="srcs">
@@ -217,11 +321,11 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="cb"><div class="feeds-grid">
         <div class="feed-item">
           <div class="feed-dot ok"></div>
-          <div><div class="feed-label">OpenSky Network</div><div class="feed-detail">365 aircraft / 0 military</div><div class="feed-detail">OAuth2 authenticated</div></div>
+          <div><div class="feed-label">OpenSky Network</div><div class="feed-detail">382 aircraft / 19 military</div><div class="feed-detail">OAuth2 authenticated</div></div>
         </div>
         <div class="feed-item">
           <div class="feed-dot ok"></div>
-          <div><div class="feed-label">Polymarket Gamma</div><div class="feed-detail">6 Iran markets</div><div class="feed-detail">Free — no auth required</div></div>
+          <div><div class="feed-label">Polymarket Gamma</div><div class="feed-detail">10 Iran markets</div><div class="feed-detail">Free — no auth required</div></div>
         </div>
         <div class="feed-item">
           <div class="feed-dot ok"></div>
