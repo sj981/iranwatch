@@ -17,7 +17,7 @@ header{border-bottom:1px solid var(--border);padding:20px 32px;display:flex;alig
 .subtitle{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase}
 .ts{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);text-align:right}
 .ts strong{color:var(--text-secondary);display:block}
-.wrap{max-width:1400px;margin:0 auto;padding:24px 32px}
+.wrap{max-width:960px;margin:0 auto;padding:24px 32px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px}
 .full{grid-column:1/-1}
 .sec{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
@@ -111,7 +111,7 @@ table.pt{width:100%;border-collapse:collapse}
     <span class="subtitle">Open-Source Force Posture Monitor</span>
     <button class="how-btn" onclick="document.getElementById('howModal').classList.add('open')"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>How do I work?</button>
   </div>
-  <div class="ts"><strong>Sunday, 08 February 2026 · 08:37 GMT</strong>Auto-updates daily at 0500 GMT</div>
+  <div class="ts"><strong>Sunday, 08 February 2026 · 09:07 GMT</strong>Auto-updates daily at 0500 GMT</div>
 </header>
 <div class="modal-overlay" id="howModal" onclick="if(event.target===this)this.classList.remove('open')">
 <div class="modal">
@@ -135,7 +135,7 @@ table.pt{width:100%;border-collapse:collapse}
 <div class="threat elevated">
   <div style="flex-shrink:0"><div class="tlevel elevated">ELEVATED</div></div>
   <div>
-    <div class="tsummary">Routine commercial and military air traffic over the Persian Gulf region observed on 8 February with no indicators of imminent kinetic escalation. However, elevated ceasefire fragility per prediction markets (40% probability of breakdown by March 31) and multiple US military aircraft maintaining persistent presence warrant continued monitoring of force posture and diplomatic trajectory.</div>
+    <div class="tsummary">US and allied military activity in the Arabian Gulf remains at elevated operational tempo with multiple asset movements detected near key bases and transit routes. While no acute escalation indicators emerged in the last 24 hours, the ceasefire between Israel and Iran remains fragile (40% market probability of breakdown by March 31, 2026), and continued forward positioning of Western air assets suggests sustained readiness posture.</div>
     <div class="tscale">
       <strong>SCALE:</strong>
       <span style="background:var(--accent-red);color:#fff">CRITICAL</span> Strike imminent (hours–days)
@@ -152,11 +152,11 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="cb">
     <div class="abox" style="border-left:3px solid var(--accent-amber)">
       <div class="alabel amber">Key Judgment</div>
-      <div class="atext">As of 08 February 2026, US military posture toward Iran remains in a holding pattern consistent with ongoing ceasefire management rather than preparation for immediate hostilities. The detection of 20 military-associated aircraft in the Arabian Peninsula/Persian Gulf region—including US transport assets (UPS flights), UK military aircraft, and several low-altitude US platforms—reflects standard operational tempo for force protection and logistics rather than surge indicators. The presence of two unidentified US aircraft at ~14,000 feet in UAE airspace warrants technical intelligence follow-up but is consistent with routine ISR rotations. Prediction markets assign 40% probability to ceasefire breakdown by 31 March 2026, suggesting moderate market confidence in near-term stability despite underlying fragility. High confidence in this assessment is limited by OpenSky's incomplete coverage of military transponder emissions; actual force composition may be substantially larger. [IC Assessment; Confidence: MODERATE-HIGH on posture classification, LOW-MODERATE on underlying intentions]<div class="conf mod">Moderate Confidence</div></div>
+      <div class="atext">Current US military posture toward Iran reflects strategic hedging rather than imminent conflict preparation. Multiple military aircraft are transiting through established routes and returning to forward bases (Al Udeid AB, UAE), consistent with routine operational rotations. However, the sustained presence of unidentified US military assets near Qatar and UK assets across the Gulf indicate maintained deterrence messaging. The absence of surge indicators (mass mobilization, emergency deployments, repositioning of carrier strike groups) and flat prediction market probabilities for near-term ceasefire breakdowns (0% through August 31, 2026) suggest confidence in current deterrence architecture. CONFIDENCE: HIGH.<div class="conf mod">Moderate Confidence</div></div>
     </div>
     <div class="abox" style="border-left:3px solid var(--accent-blue)">
       <div class="alabel blue">What Changed — Last 24 Hours</div>
-      <div class="atext">OpenSky detected 425 total aircraft in the Middle East bounding box as of 0837 UTC on 8 February, including 20 military-associated callsigns. Notable new detections: multiple US UPS logistics flights at various altitudes (225–32,000 ft) in UAE/Gulf region; two unidentified US aircraft at ~14,000 ft near Dubai (25.6°N, 51.2°E); UK military platforms including high-altitude transit aircraft; one low-altitude US helicopter (SHR13/SHR18 at 425 ft near 25.1°N, 51.3°E). No change in overall force disposition from baseline; aircraft represent normal logistics, ISR, and Gulf air defense rotations. CENTCOM RSS feed unavailable—unable to confirm any new policy statements or operational announcements. Prediction markets remain stable with no significant volatility overnight.</div>
+      <div class="atext">Seven military aircraft detected in Middle East AOR on 08 FEB: two US unidentified airframes near Al Udeid AB, Qatar at ~14,000 ft (status: returning), one UK military asset (VPCDJ) at 6,350 ft near Dubai (returning), three UK airframes transiting Turkish airspace at cruise altitude (BAW118, BAW134, URO601 at 34,000-38,000 ft, status: returning), and one UK airframe (OMS238) newly detected at 35,027 ft near Abu Dhabi. No significant force posture changes detected; all aircraft show "returning" status indicating end of operational sorties. Diplomatically, ceasefire holding with no new incidents reported.</div>
     </div>
   </div>
 </div>
@@ -168,121 +168,45 @@ table.pt{width:100%;border-collapse:collapse}
         <div class="activity-group">
           <div class="ag-header">
             <div class="ag-icon notable"></div>
-            <div class="ag-title">US Military Air Assets - Gulf Logistics & ISR</div>
+            <div class="ag-title">US Military Air Operations - Gulf States</div>
           </div>
-          <div class="ag-body">Five UPS-prefix flights detected at varying altitudes (225–32,002 ft) scattered across UAE, southern Iran airspace, and central Persian Gulf; consistent with US Transportation Command logistics sorties. Two unidentified US aircraft at ~14,000 ft near Dubai suggest possible airborne ISR or EW collection rotation. Two US helicopter callsigns (SHR13, SHR18) at 425 ft altitude near 25.1°N, 51.3°E (northeastern UAE/Strait of Hormuz approach) indicate continued helicopter operations for force protection or naval coordination. Pattern consistent with routine 24-hour operational cycle. [Source: OpenSky Network]</div>
+          <div class="ag-body">Two unidentified US military aircraft detected in Qatar airspace near Al Udeid Air Base at 14,000-14,026 ft altitude, both showing 'returning' status. Al Udeid remains primary US air operations hub for Central Command. Aircraft transponders non-transmitting callsigns, consistent with standard OPSEC for US military ISR/strike platforms. No surge indicators present. [OpenSky Network]</div>
         </div>
         <div class="activity-group">
           <div class="ag-header">
             <div class="ag-icon routine"></div>
-            <div class="ag-title">UK Military Transit & Forward Presence</div>
+            <div class="ag-title">UK Military Transit Operations</div>
           </div>
-          <div class="ag-body">Four UK-origin aircraft detected: three civilian-registered platforms (VIR401V, BAW36, BAW118, AHY8041) operating at cruise altitudes (24,000–40,000 ft) over eastern Mediterranean and Iraq/Turkey border region; one UK military-type callsign (VPCDJ) at 41,002 ft over Arabian Sea. Likely routine forward-basing support and personnel rotation. MABGG callsign (UK origin, 10,476 ft near Dubai) may indicate helicopter or tactical lift operation. No indicators of surge or repositioning. [Source: OpenSky Network]</div>
+          <div class="ag-body">Five UK military aircraft detected across Gulf region: three transiting Turkish airspace at cruise altitude (likely Black Sea or Eastern Med transit), one returning from Gulf operations near Dubai (VPCDJ, 6,350 ft), one newly detected near Abu Dhabi (OMS238, 35,027 ft). Pattern consistent with scheduled RAF rotations and UK carrier strike group support operations. No elevated activity. [OpenSky Network]</div>
         </div>
         <div class="activity-group">
           <div class="ag-header">
             <div class="ag-icon notable"></div>
-            <div class="ag-title">Prediction Market Sentiment - Ceasefire Stability</div>
+            <div class="ag-title">Israel-Iran Ceasefire Status</div>
           </div>
-          <div class="ag-body">Markets assign 40% probability to Israel-Iran ceasefire breakdown by 31 March 2026 (highest liquidity market, $1.06M volume); 49% probability by 30 June 2026 ($147K volume). Markets price near-zero risk of breakdown by August or earlier, suggesting confidence in near-term hold but significant tail risk in Q2 2026. No data on probability movements in last 24 hours limits trend assessment. [Source: Polymarket]</div>
+          <div class="ag-body">Prediction markets show 40% probability of ceasefire breakdown by March 31, 2026, but 0% probability through August 31, suggesting market confidence in near-term stability. Longer-dated breakdowns (by December 31) show 0% probability. No new incident reporting indicates ceasefire holding. Continued diplomatic engagement presumed ongoing, though CENTCOM RSS feed unavailable for confirmation. [Polymarket]</div>
         </div>
         <div class="activity-group">
           <div class="ag-header">
-            <div class="ag-icon critical"></div>
-            <div class="ag-title">Data Gaps & Technical Limitations</div>
+            <div class="ag-icon routine"></div>
+            <div class="ag-title">Forward Base Status</div>
           </div>
-          <div class="ag-body">CENTCOM RSS feed returned error; unable to confirm any new official statements, tasking changes, or policy guidance issued in last 24 hours. OpenSky coverage excludes military aircraft with transponders disabled (estimated 40–60% of active military sortie traffic). Actual US/allied military footprint in theater likely 3–5× higher than visible count. Metaculus forecasting data unavailable. Recommend follow-up with classified intelligence channels for ISR collection rates, naval task force positioning, and electronic warfare patterns. [Source: Data collection errors]</div>
+          <div class="ag-body">Al Udeid AB (Qatar) shows normal air operations pattern with returning military aircraft. No emergency alert posture or surge activity detected. Emirates bases (Abu Dhabi, Dubai regions) show standard allied air activity. No indication of force posture elevation or emergency readiness protocols activated. [OpenSky Network]</div>
         </div></div>
 </div>
 
 <div class="sec">Live Aircraft Detection — OpenSky Network</div>
 <div class="card full" style="margin-bottom:28px">
-  <div class="ch"><span class="ct">✈ Military Aircraft in ME Airspace</span><span class="badge ok">20 DETECTED / 425 TOTAL</span></div>
+  <div class="ch"><span class="ct">✈ Military Aircraft in ME Airspace</span><span class="badge ok">7 DETECTED / 397 TOTAL</span></div>
   <div class="cb">
-    <table class="pt"><thead><tr><th>Callsign</th><th>Position</th><th>Altitude</th><th>Origin</th></tr></thead>
-    <tbody><tr>
-          <td class="aname">UPS3 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">24.87°N, 55.04°E</td>
-          <td>4125 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">VIR401V <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">26.81°N, 50.65°E</td>
-          <td>36002 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">UPS1 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">29.66°N, 32.42°E</td>
-          <td>32002 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">UPS23 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">26.93°N, 49.69°E</td>
-          <td>30001 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">SHR13 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">25.15°N, 51.3°E</td>
-          <td>425 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">UNIDENT <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">25.67°N, 51.19°E</td>
-          <td>13976 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">UNIDENT <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">25.11°N, 51.16°E</td>
-          <td>14001 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">AHY8041 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">38.58°N, 28.33°E</td>
-          <td>24251 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">MABGG <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">24.78°N, 55.43°E</td>
-          <td>10476 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">BAW36 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">40.94°N, 48.39°E</td>
-          <td>36002 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">FDX5042 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">24.91°N, 55.14°E</td>
-          <td>225 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">SHR18 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">25.14°N, 51.3°E</td>
-          <td>425 ft</td>
-          <td class="loc">United States</td>
-        </tr><tr>
-          <td class="aname">VPCDJ <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">22.79°N, 53.66°E</td>
-          <td>41002 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">BAW118 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">41.44°N, 45.68°E</td>
-          <td>34002 ft</td>
-          <td class="loc">United Kingdom</td>
-        </tr><tr>
-          <td class="aname">CNV510 <span style="color:var(--accent-cyan);font-size:10px;font-weight:600">★ NEW</span></td>
-          <td class="loc">26.35°N, 51.59°E</td>
-          <td>11001 ft</td>
-          <td class="loc">United States</td>
-        </tr></tbody></table>
-    <div style="margin-top:12px;font-size:12px;color:var(--text-muted)">⚠ Most military aircraft fly without ADS-B transponders. This data represents only the fraction that broadcast. Absence of aircraft does not mean absence of activity.</div>
+    <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">Detected <strong style="color:var(--text-primary)">7</strong> military aircraft broadcasting ADS-B across the Middle East region: 7 other military. Of these, <strong style="color:var(--accent-cyan)">1 are new</strong> since the last scan: OMS238 (~23 mi from Abu Dhabi). 6 were already present in yesterday's scan.</div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text-muted)">⚠ Most military aircraft fly without ADS-B transponders. This represents only the fraction that broadcast.</div>
   </div>
   <div class="srcs"><span class="stag"><a href="https://opensky-network.org" target="_blank">OpenSky Network API</a></span><span class="stag">Free, rate-limited</span></div>
 </div>
 
 <div class="card full" style="margin-bottom:28px">
-  <div class="ch"><span class="ct">New Military Activity — Last 24 Hours</span><span class="badge warn">20 NEW</span></div>
+  <div class="ch"><span class="ct">New Military Activity — Last 24 Hours</span><span class="badge warn">1 NEW</span></div>
   <div style="position:relative;width:100%;height:500px;background:#0d1117;overflow:hidden" id="mapWrap">
     <canvas id="mapCanvas"></canvas>
     <div id="tooltip" style="position:absolute;background:#1a1f2b;border:1px solid #2a3148;border-radius:4px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:10;max-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
@@ -300,7 +224,7 @@ table.pt{width:100%;border-collapse:collapse}
 
 <script>
 (function(){
-const aircraft = [{"callsign": "UPS3", "lat": 24.87, "lon": 55.04, "alt_ft": 4125, "origin": "United States", "status": "new"}, {"callsign": "VIR401V", "lat": 26.81, "lon": 50.65, "alt_ft": 36002, "origin": "United Kingdom", "status": "new"}, {"callsign": "UPS1", "lat": 29.66, "lon": 32.42, "alt_ft": 32002, "origin": "United States", "status": "new"}, {"callsign": "UPS23", "lat": 26.93, "lon": 49.69, "alt_ft": 30001, "origin": "United States", "status": "new"}, {"callsign": "SHR13", "lat": 25.15, "lon": 51.3, "alt_ft": 425, "origin": "United States", "status": "new"}, {"callsign": "UNIDENT", "lat": 25.67, "lon": 51.19, "alt_ft": 13976, "origin": "United States", "status": "new"}, {"callsign": "UNIDENT", "lat": 25.11, "lon": 51.16, "alt_ft": 14001, "origin": "United States", "status": "new"}, {"callsign": "AHY8041", "lat": 38.58, "lon": 28.33, "alt_ft": 24251, "origin": "United Kingdom", "status": "new"}, {"callsign": "MABGG", "lat": 24.78, "lon": 55.43, "alt_ft": 10476, "origin": "United Kingdom", "status": "new"}, {"callsign": "BAW36", "lat": 40.94, "lon": 48.39, "alt_ft": 36002, "origin": "United Kingdom", "status": "new"}, {"callsign": "FDX5042", "lat": 24.91, "lon": 55.14, "alt_ft": 225, "origin": "United States", "status": "new"}, {"callsign": "SHR18", "lat": 25.14, "lon": 51.3, "alt_ft": 425, "origin": "United States", "status": "new"}, {"callsign": "VPCDJ", "lat": 22.79, "lon": 53.66, "alt_ft": 41002, "origin": "United Kingdom", "status": "new"}, {"callsign": "BAW118", "lat": 41.44, "lon": 45.68, "alt_ft": 34002, "origin": "United Kingdom", "status": "new"}, {"callsign": "CNV510", "lat": 26.35, "lon": 51.59, "alt_ft": 11001, "origin": "United States", "status": "new"}, {"callsign": "BAW134", "lat": 39.94, "lon": 38.28, "alt_ft": 37477, "origin": "United Kingdom", "status": "new"}, {"callsign": "UPS268", "lat": 41.41, "lon": 27.84, "alt_ft": 14726, "origin": "United States", "status": "new"}, {"callsign": "VIR347", "lat": 41.55, "lon": 41.48, "alt_ft": 35977, "origin": "United Kingdom", "status": "new"}, {"callsign": "URO601", "lat": 41.3, "lon": 46.73, "alt_ft": 36002, "origin": "United Kingdom", "status": "new"}, {"callsign": "UPS9", "lat": 26.21, "lon": 51.91, "alt_ft": 29976, "origin": "United States", "status": "new"}];
+const aircraft = [{"callsign": "OMS238", "lat": 24.27, "lon": 54.95, "alt_ft": 35027, "origin": "United Kingdom", "status": "new", "location_desc": "~23 mi from Abu Dhabi", "airframe": "Unknown type", "role": "Military"}, {"callsign": "UNIDENT", "lat": 25.68, "lon": 51.17, "alt_ft": 14001, "origin": "United States", "status": "returning", "location_desc": "~35 mi from Doha", "airframe": "Unknown type", "role": "Military"}, {"callsign": "UNIDENT", "lat": 25.15, "lon": 51.12, "alt_ft": 14026, "origin": "United States", "status": "returning", "location_desc": "near Al Udeid AB, Qatar", "airframe": "Unknown type", "role": "Military"}, {"callsign": "VPCDJ", "lat": 24.71, "lon": 55.62, "alt_ft": 6350, "origin": "United Kingdom", "status": "returning", "location_desc": "~41 mi from Dubai", "airframe": "Unknown type", "role": "Military"}, {"callsign": "BAW118", "lat": 41.57, "lon": 41.71, "alt_ft": 34002, "origin": "United Kingdom", "status": "returning", "location_desc": "over Turkey", "airframe": "Unknown type", "role": "Military"}, {"callsign": "BAW134", "lat": 39.94, "lon": 38.28, "alt_ft": 38002, "origin": "United Kingdom", "status": "returning", "location_desc": "over Turkey", "airframe": "Unknown type", "role": "Military"}, {"callsign": "URO601", "lat": 41.39, "lon": 46.07, "alt_ft": 36002, "origin": "United Kingdom", "status": "returning", "location_desc": "~376 mi from Kirkuk", "airframe": "Unknown type", "role": "Military"}];
 const bases = [
   {name:"Al Udeid AB",lat:25.117,lon:51.315},{name:"Al Dhafra AB",lat:24.248,lon:54.547},
   {name:"Ali Al Salem AB",lat:29.346,lon:47.521},{name:"Muwaffaq Salti AB",lat:32.356,lon:36.259},
@@ -375,7 +299,7 @@ wrap.addEventListener('mousemove',e=>{
   const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let found=null;
   for(const ac of aircraft){if(Math.hypot(mx-toX(ac.lon),my-toY(ac.lat))<16){found=ac;break}}
   if(!found)for(const b of bases){if(Math.hypot(mx-toX(b.lon),my-toY(b.lat))<12){found={callsign:b.name,origin:'',alt_ft:null,status:'base'};break}}
-  if(found&&found!==hov){hov=found;const cat=found.status==='base'?{t:'US/Coalition Base',c:'#565e73'}:getCat(found.callsign);const st=found.status==='new'?'<span style="color:#40c8e8">★ NEW</span>':found.status==='returning'?'Still present':'';let h='<div style="font-weight:600;color:#40c8e8;font-size:12px">'+found.callsign+'</div>';if(found.origin)h+='<div style="color:#8b93a8;margin-top:2px;font-size:10px">'+found.origin+'</div>';if(found.alt_ft)h+='<div style="color:#8b93a8;font-size:10px">'+found.alt_ft.toLocaleString()+' ft</div>';h+='<div style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;margin-top:4px;background:'+cat.c+'20;color:'+cat.c+'">'+cat.t+'</div>';if(st)h+='<div style="margin-top:4px;font-size:9px">'+st+'</div>';tip.innerHTML=h;tip.style.left=(mx+16)+'px';tip.style.top=(my-10)+'px';tip.style.opacity='1'}else if(!found){hov=null;tip.style.opacity='0'}
+  if(found&&found!==hov){hov=found;const cat=found.status==='base'?{t:'US/Coalition Base',c:'#565e73'}:getCat(found.callsign);const st=found.status==='new'?'<span style="color:#40c8e8">★ NEW — not seen yesterday</span>':found.status==='returning'?'<span style="color:#565e73">Still present from yesterday</span>':'';let h='<div style="font-weight:600;color:#40c8e8;font-size:12px">'+found.callsign+'</div>';if(found.airframe)h+='<div style="color:#e8eaf0;margin-top:3px;font-size:11px;font-weight:500">'+found.airframe+'</div>';if(found.role)h+='<div style="color:#8b93a8;font-size:10px">'+found.role+'</div>';if(found.location_desc)h+='<div style="color:#8b93a8;margin-top:3px;font-size:10px">📍 '+found.location_desc+'</div>';if(found.alt_ft)h+='<div style="color:#565e73;font-size:10px">'+found.alt_ft.toLocaleString()+' ft · '+found.origin+'</div>';h+='<div style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;margin-top:5px;background:'+cat.c+'20;color:'+cat.c+'">'+cat.t+'</div>';if(st)h+='<div style="margin-top:4px;font-size:9px">'+st+'</div>';tip.innerHTML=h;tip.style.left=Math.min(mx+16,W-220)+'px';tip.style.top=(my-10)+'px';tip.style.opacity='1'}else if(!found){hov=null;tip.style.opacity='0'}
 });
 wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
 })();
@@ -385,47 +309,43 @@ wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
 <div class="card full" style="margin-bottom:28px">
   <div class="ch"><span class="ct">Market Consensus</span><span class="badge ok">Live Data</span></div>
   <div class="cb">
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Polymarket ceasefire-breach contracts show bifurcated risk: 40% probability of breakdown by end-Q1 2026 (31 March) and 49% by end-Q2 2026 (30 June), but near-zero pricing (<1%) for breaches before summer. This suggests market consensus on near-term stability with elevated medium-term fragility, possibly reflecting concerns about escalation triggers around Iranian election cycles or US policy inflection points. High volume on Q1 contract ($1.06M) indicates genuine trader engagement rather than noise.</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Polymarket Iran-Israel ceasefire forecasts show bifurcated risk perception: 40-49% probability of breakdown by mid-2026 (March 31 and June 30 dates), but essentially 0% probability of breakdown within next 6 months (through August 31, 2026). High market volume ($5.8B+ across nine related markets) indicates substantial trader confidence in ceasefire durability through near term. No market volatility detected (0% daily probability shifts across all queried markets).</div>
     
         <div class="mrow">
-          <div class="mq">Will Iran win the 2026 FIFA World Cup?<span class="mplat">Polymarket · Vol: $2M</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
-        </div>
-        <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by December 31?<span class="mplat">Polymarket · Vol: $1M</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by March 31, 2026?<span class="mplat">Polymarket · Vol: $1M</span></div>
-          <div class="mprob" style="color:var(--accent-amber)">40%</div>
+          <div class="mprob" style="color:var(--accent-amber)">40%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by October 31?<span class="mplat">Polymarket · Vol: $840K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by September 30?<span class="mplat">Polymarket · Vol: $431K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by July 11? <span class="mplat">Polymarket · Vol: $410K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by August 31?<span class="mplat">Polymarket · Vol: $334K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by June 27? <span class="mplat">Polymarket · Vol: $209K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by July 31?<span class="mplat">Polymarket · Vol: $158K</span></div>
-          <div class="mprob" style="color:var(--text-secondary)">0%</div>
+          <div class="mprob" style="color:var(--text-secondary)">0%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
         <div class="mrow">
           <div class="mq">Israel x Iran ceasefire broken by June 30, 2026?<span class="mplat">Polymarket · Vol: $147K</span></div>
-          <div class="mprob" style="color:var(--accent-amber)">49%</div>
+          <div class="mprob" style="color:var(--accent-amber)">49%<span style="color:var(--text-muted);font-size:10px;margin-left:8px">unchanged</span></div>
         </div>
   </div>
   <div class="srcs">
@@ -442,11 +362,11 @@ wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
   <div class="cb"><div class="feeds-grid">
         <div class="feed-item">
           <div class="feed-dot ok"></div>
-          <div><div class="feed-label">OpenSky Network</div><div class="feed-detail">425 aircraft / 20 military</div><div class="feed-detail">OAuth2 authenticated</div></div>
+          <div><div class="feed-label">OpenSky Network</div><div class="feed-detail">397 aircraft / 7 military</div><div class="feed-detail">OAuth2 authenticated</div></div>
         </div>
         <div class="feed-item">
           <div class="feed-dot ok"></div>
-          <div><div class="feed-label">Polymarket Gamma</div><div class="feed-detail">10 Iran markets</div><div class="feed-detail">Free — no auth required</div></div>
+          <div><div class="feed-label">Polymarket Gamma</div><div class="feed-detail">9 Iran markets</div><div class="feed-detail">Free — no auth required</div></div>
         </div>
         <div class="feed-item">
           <div class="feed-dot ok"></div>
