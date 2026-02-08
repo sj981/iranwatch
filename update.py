@@ -339,7 +339,7 @@ def describe_location(lat, lon):
     return f"{lat}°N, {lon}°E"
 
 
-
+def fetch_opensky():
     """Fetch military aircraft in the ME bounding box from OpenSky Network."""
     print("[OpenSky] Fetching aircraft data...")
     url = "https://opensky-network.org/api/states/all"
