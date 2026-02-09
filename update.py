@@ -40,7 +40,12 @@ OPENSKY_CLIENT_ID = os.environ.get("OPENSKY_CLIENT_ID", "")
 OPENSKY_CLIENT_SECRET = os.environ.get("OPENSKY_CLIENT_SECRET", "")
 
 # Middle East bounding box for aircraft queries
-ME_BBOX = {"lamin": 12, "lamax": 42, "lomin": 25, "lomax": 70}
+# Bounding box: expanded to catch inbound military traffic from European staging bases
+# West: covers western Med, Morón/Rota (Spain), Sigonella (Sicily), Aviano (Italy)
+# North: covers Ramstein (Germany), Mildenhall (UK), Prestwick (Scotland) transit corridor
+# East: western Pakistan (covers all of Iran)
+# South: Horn of Africa, Diego Garcia approaches
+ME_BBOX = {"lamin": 10, "lamax": 55, "lomin": -10, "lomax": 70}
 
 # Military callsign prefixes (US/NATO airlift, tanker, bomber, ISR, fighter)
 MIL_PREFIXES = [
@@ -50,6 +55,7 @@ MIL_PREFIXES = [
     # US Tanker (KC-135, KC-46, KC-10)
     "ETHYL", "JULIET", "PEARL", "STEEL", "SHELL",
     "TEAL", "BRIT", "NKAC", "PKSN",
+    "BLUE", "IRON", "CASA", "INDY",
     # US Bomber (B-2, B-52, B-1)
     "DOOM", "DEATH", "BATT", "SEVILLE", "MYTEE",
     "BONE", "LANCE", "TIGER",
@@ -74,9 +80,6 @@ MIL_PREFIXES = [
     "GOLD", "SHADOW", "TORCH",
 ]
 
-# Also detect military by origin country (US, UK) + non-standard callsigns
-MIL_COUNTRIES = ["United States", "United Kingdom"]
-
 # Callsign prefix → probable airframe and role
 # Sources: OSINT community databases, ADS-B Exchange, milaircomms.com
 CALLSIGN_AIRFRAMES = {
@@ -99,6 +102,9 @@ CALLSIGN_AIRFRAMES = {
     "TEAL":   ("KC-135 Stratotanker", "Aerial refueling"),
     "NKAC":   ("KC-135 Stratotanker", "Aerial refueling"),
     "PKSN":   ("KC-46A Pegasus", "Aerial refueling"),
+    "BLUE":   ("KC-135 / KC-46", "Aerial refueling"),
+    "CASA":   ("KC-135 Stratotanker", "Aerial refueling"),
+    "INDY":   ("KC-135 Stratotanker", "Aerial refueling"),
     # Bombers
     "DOOM":   ("B-2A Spirit", "Stealth bomber — HIGH SIGNIFICANCE"),
     "DEATH":  ("B-52H Stratofortress", "Strategic bomber"),
@@ -203,7 +209,7 @@ def get_opensky_token():
 
 # Reference points: bases, cities, and landmarks
 _REFERENCE_POINTS = [
-    # US/Coalition bases
+    # US/Coalition bases — Middle East
     (25.117, 51.315, "Al Udeid AB, Qatar"),
     (24.248, 54.547, "Al Dhafra AB, UAE"),
     (29.346, 47.521, "Ali Al Salem AB, Kuwait"),
@@ -214,7 +220,20 @@ _REFERENCE_POINTS = [
     (34.590, 32.988, "RAF Akrotiri, Cyprus"),
     (26.236, 50.577, "NSA Bahrain"),
     (-7.313, 72.411, "Diego Garcia"),
-    # Key cities
+    # US/NATO bases — European staging
+    (49.437, 7.600, "Ramstein AB, Germany"),
+    (46.032, 11.877, "Aviano AB, Italy"),
+    (37.176, -5.615, "Morón AB, Spain"),
+    (36.647, -6.349, "NAS Rota, Spain"),
+    (37.037, 22.421, "NAS Souda Bay, Crete"),
+    (37.401, 14.925, "NAS Sigonella, Sicily"),
+    (52.360, 0.486, "RAF Lakenheath, UK"),
+    (52.364, 0.773, "RAF Mildenhall, UK"),
+    (55.509, -4.587, "Prestwick, Scotland"),
+    (38.765, -27.091, "Lajes Field, Azores"),
+    (35.857, 14.513, "RAF Luqa, Malta"),
+    (40.900, 8.291, "Decimomannu AB, Sardinia"),
+    # Key cities — Middle East
     (35.689, 51.389, "Tehran"),
     (32.621, 51.678, "Isfahan"),
     (32.064, 52.068, "Natanz"),
@@ -260,6 +279,14 @@ _COUNTRY_BOXES = [
     (10, 12, 42, 44, "Djibouti"),
     (-1, 12, 41, 51, "Somalia"),
     (12, 18, 36, 43, "Eritrea"),
+    # European staging areas (expanded bbox)
+    (47, 55, 5, 15, "Germany"),
+    (36, 47, 6, 19, "Italy"),
+    (36, 44, -10, 5, "Spain"),
+    (50, 55, -6, 2, "England"),
+    (55, 59, -8, -1, "Scotland"),
+    (42, 47, -5, 9, "France"),
+    (34, 42, 19, 30, "Greece"),
 ]
 
 # Water bodies
@@ -272,6 +299,8 @@ _WATER_BODIES = [
     (34, 37, 28, 36, "the eastern Mediterranean"),
     (12, 30, 60, 75, "the Arabian Sea"),
     (11, 13, 43, 48, "the Gulf of Aden"),
+    (30, 42, -5, 15, "the western Mediterranean"),
+    (42, 48, -10, 0, "the Bay of Biscay"),
     (25.5, 27, 56, 57, "the Strait of Hormuz"),
 ]
 
@@ -340,8 +369,219 @@ def describe_location(lat, lon):
 
 
 def fetch_opensky():
-    """Fetch military aircraft in the ME bounding box from OpenSky Network."""
-    print("[OpenSky] Fetching aircraft data...")
+    """Fetch military aircraft from airplanes.live /mil endpoint.
+    
+    airplanes.live provides:
+    - Pre-tagged military aircraft (dbFlags & 1) — no callsign guessing
+    - Aircraft type (t), registration (r), hex code — much richer than OpenSky
+    - Unfiltered data — military aircraft that OpenSky suppresses are visible
+    - Free, no API key required, 1 req/sec rate limit
+    
+    We still call this fetch_opensky() to maintain compatibility with the rest
+    of the codebase (HTML template, analysis function, etc.).
+    """
+    print("[airplanes.live] Fetching military aircraft...")
+    
+    # /mil returns ALL military-tagged aircraft globally.
+    # We filter to our bounding box in post-processing.
+    url = "https://api.airplanes.live/v2/mil"
+    
+    try:
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        all_mil = data.get("ac", [])
+        total_global = len(all_mil)
+        print(f"[airplanes.live] Global military aircraft: {total_global}")
+        
+        # Filter to our bounding box
+        mil_aircraft = []
+        for ac in all_mil:
+            lat = ac.get("lat")
+            lon = ac.get("lon")
+            
+            # Skip aircraft with no position or on ground
+            if not lat or not lon:
+                continue
+            if ac.get("alt_baro") == "ground":
+                continue
+            
+            # Bounding box filter
+            if not (ME_BBOX["lamin"] <= lat <= ME_BBOX["lamax"] and
+                    ME_BBOX["lomin"] <= lon <= ME_BBOX["lomax"]):
+                continue
+            
+            callsign = (ac.get("flight") or "").strip().upper()
+            hex_code = ac.get("hex", "")
+            registration = ac.get("r", "")      # Tail number!
+            aircraft_type = ac.get("t", "")      # ICAO type code (C17, KC135, etc.)
+            origin = ac.get("origin_country", ac.get("r", ""))  # Not always available
+            
+            # Altitude: airplanes.live gives feet directly
+            alt_ft = ac.get("alt_baro") if isinstance(ac.get("alt_baro"), (int, float)) else None
+            gs_knots = ac.get("gs")
+            track = ac.get("track")
+            
+            r_lat = round(lat, 2)
+            r_lon = round(lon, 2)
+            
+            # Use airplanes.live's type field first, fall back to callsign lookup
+            airframe = None
+            if aircraft_type:
+                airframe = _resolve_icao_type(aircraft_type)
+            if not airframe and callsign:
+                airframe = identify_airframe(callsign)
+            
+            # Determine origin country from hex code ranges
+            country = _country_from_hex(hex_code) if hex_code else ""
+            
+            mil_aircraft.append({
+                "callsign": callsign,
+                "hex": hex_code,
+                "registration": registration,
+                "aircraft_type": aircraft_type,
+                "origin": country,
+                "lat": r_lat,
+                "lon": r_lon,
+                "alt_ft": alt_ft,
+                "gs_knots": round(gs_knots) if gs_knots else None,
+                "track": round(track) if track else None,
+                "location_desc": describe_location(r_lat, r_lon),
+                "airframe": airframe[0] if airframe else (aircraft_type or "Unknown type"),
+                "role": airframe[1] if airframe else "Military",
+            })
+        
+        print(f"[airplanes.live] Military in bounding box: {len(mil_aircraft)}")
+        
+        # Sort by significance: known types first, then by altitude (higher = more interesting)
+        mil_aircraft.sort(key=lambda a: (a["airframe"] == "Unknown type", -(a["alt_ft"] or 0)))
+        
+        return {
+            "status": "ok",
+            "source": "airplanes.live",
+            "total_aircraft": total_global,  # global mil count
+            "total_in_bbox": len(mil_aircraft),
+            "mil_count": len(mil_aircraft),
+            "mil_aircraft": mil_aircraft[:50],  # top 50 (more than before since data is cleaner)
+        }
+
+    except Exception as e:
+        print(f"[airplanes.live] Error: {e}")
+        print("[airplanes.live] Falling back to OpenSky...")
+        return _fetch_opensky_fallback()
+
+
+def _country_from_hex(hex_code):
+    """Determine country from ICAO24 hex address ranges."""
+    try:
+        h = int(hex_code, 16)
+    except (ValueError, TypeError):
+        return ""
+    
+    # Major military hex ranges (approximate)
+    if 0xA00000 <= h <= 0xAFFFFF: return "United States"
+    if 0xAE0000 <= h <= 0xAFFFFF: return "United States"  # US mil subset
+    if 0x400000 <= h <= 0x43FFFF: return "United Kingdom"
+    if 0x43C000 <= h <= 0x43CFFF: return "United Kingdom"  # UK mil subset
+    if 0x3C0000 <= h <= 0x3FFFFF: return "Germany"
+    if 0x380000 <= h <= 0x3BFFFF: return "France"
+    if 0x300000 <= h <= 0x33FFFF: return "Italy"
+    if 0x340000 <= h <= 0x37FFFF: return "Spain"
+    if 0x480000 <= h <= 0x4BFFFF: return "Netherlands"
+    if 0x440000 <= h <= 0x447FFF: return "Austria"
+    if 0x460000 <= h <= 0x467FFF: return "Belgium"
+    if 0x4C0000 <= h <= 0x4CFFFF: return "Turkey"
+    if 0x738000 <= h <= 0x73FFFF: return "Israel"
+    if 0x700000 <= h <= 0x70FFFF: return "Saudi Arabia"
+    if 0x600000 <= h <= 0x6003FF: return "Qatar"
+    if 0x896000 <= h <= 0x896FFF: return "UAE"
+    if 0x710000 <= h <= 0x717FFF: return "Jordan"
+    if 0x500000 <= h <= 0x507FFF: return "Australia"
+    if 0xC00000 <= h <= 0xC3FFFF: return "Canada"
+    if 0x7C0000 <= h <= 0x7FFFFF: return "Australia"
+    return ""
+
+
+# ICAO type code → human-readable name and role
+_ICAO_TYPE_MAP = {
+    # Airlift
+    "C17":  ("C-17A Globemaster III", "Strategic airlift"),
+    "C5M":  ("C-5M Super Galaxy", "Heavy strategic airlift"),
+    "C5":   ("C-5M Super Galaxy", "Heavy strategic airlift"),
+    "C130": ("C-130 Hercules", "Tactical airlift"),
+    "C30J": ("C-130J Super Hercules", "Tactical airlift"),
+    "C160": ("C-160 Transall", "Tactical airlift"),
+    "A400": ("A400M Atlas", "Tactical/strategic airlift"),
+    "A40M": ("A400M Atlas", "Tactical/strategic airlift"),
+    "C2":   ("C-2 Greyhound", "Carrier logistics"),
+    # Tankers
+    "K35R": ("KC-135R Stratotanker", "Aerial refueling"),
+    "K35E": ("KC-135E Stratotanker", "Aerial refueling"),
+    "KC35": ("KC-135 Stratotanker", "Aerial refueling"),
+    "K46":  ("KC-46A Pegasus", "Aerial refueling"),
+    "KC46": ("KC-46A Pegasus", "Aerial refueling"),
+    "K10":  ("KC-10 Extender", "Aerial refueling"),
+    "KC10": ("KC-10 Extender", "Aerial refueling"),
+    "MRTT": ("A330 MRTT Voyager", "Aerial refueling"),
+    "A310": ("A310 MRTT", "Aerial refueling / transport"),
+    "A332": ("A330-200", "Transport / tanker variant"),
+    # ISR / Surveillance
+    "GLEX": ("RQ-4B Global Hawk / Bombardier", "High-altitude ISR / Business"),
+    "RQ4B": ("RQ-4B Global Hawk", "High-altitude ISR drone"),
+    "E3CF": ("E-3 Sentry AWACS", "Airborne early warning"),
+    "E3":   ("E-3 Sentry AWACS", "Airborne early warning"),
+    "E6":   ("E-6B Mercury", "TACAMO / nuclear C3"),
+    "E8":   ("E-8C JSTARS", "Ground surveillance"),
+    "P8":   ("P-8A Poseidon", "Maritime patrol / ASW"),
+    "P3":   ("P-3 Orion", "Maritime patrol"),
+    "RC35": ("RC-135", "SIGINT reconnaissance"),
+    "E35L": ("RC-135V/W Rivet Joint", "SIGINT reconnaissance"),
+    "B350": ("MC-12W / King Air", "ISR / light transport"),
+    "BE20": ("C-12 Huron", "Light transport / ISR"),
+    # Bombers
+    "B2":   ("B-2A Spirit", "Stealth strategic bomber"),
+    "B52":  ("B-52H Stratofortress", "Strategic bomber"),
+    "B1":   ("B-1B Lancer", "Strategic bomber"),
+    # Fighters
+    "F15":  ("F-15 Eagle/Strike Eagle", "Air superiority / strike"),
+    "F16":  ("F-16 Fighting Falcon", "Multirole fighter"),
+    "F18":  ("F/A-18 Hornet/Super Hornet", "Carrier multirole fighter"),
+    "F18S": ("F/A-18E/F Super Hornet", "Carrier multirole fighter"),
+    "F22":  ("F-22A Raptor", "Air superiority"),
+    "F35":  ("F-35 Lightning II", "Stealth multirole fighter"),
+    "FA18": ("F/A-18 Hornet", "Carrier multirole fighter"),
+    "EUFI": ("Eurofighter Typhoon", "Multirole fighter"),
+    "RFAL": ("Rafale", "Multirole fighter"),
+    "TORN": ("Tornado", "Strike / interdiction"),
+    # Helicopters
+    "H60":  ("UH-60 Black Hawk", "Utility helicopter"),
+    "H47":  ("CH-47 Chinook", "Heavy lift helicopter"),
+    "V22":  ("MV-22 Osprey", "Tiltrotor transport"),
+    # VIP / Command
+    "VC25": ("VC-25A (Air Force One)", "Presidential transport"),
+    "C40A": ("C-40A Clipper", "Executive transport"),
+    "C37A": ("C-37A Gulfstream V", "Executive transport"),
+}
+
+def _resolve_icao_type(type_code):
+    """Resolve ICAO type code to (airframe_name, role) tuple."""
+    if not type_code:
+        return None
+    tc = type_code.upper().replace("-", "")
+    # Direct match
+    if tc in _ICAO_TYPE_MAP:
+        return _ICAO_TYPE_MAP[tc]
+    # Partial match (e.g., "C17" matches "C17A")
+    for key, val in _ICAO_TYPE_MAP.items():
+        if tc.startswith(key) or key.startswith(tc):
+            return val
+    return None
+
+
+def _fetch_opensky_fallback():
+    """Fallback to OpenSky if airplanes.live is unavailable."""
+    print("[OpenSky Fallback] Fetching aircraft data...")
     url = "https://opensky-network.org/api/states/all"
     params = {
         "lamin": ME_BBOX["lamin"],
@@ -350,67 +590,51 @@ def fetch_opensky():
         "lomax": ME_BBOX["lomax"],
     }
 
-    # Authenticate via OAuth2 Bearer token (required for post-March-2025 accounts)
     headers = {}
     token = get_opensky_token()
     if token:
         headers["Authorization"] = f"Bearer {token}"
-        print("[OpenSky] Using authenticated request (higher rate limits)")
-    else:
-        print("[OpenSky] No credentials — using anonymous request (lower rate limits)")
 
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-
         all_aircraft = data.get("states", []) or []
         mil_aircraft = []
 
         for ac in all_aircraft:
             callsign = (ac[1] or "").strip().upper()
-            origin = ac[2] or ""
             on_ground = ac[8]
             lat, lon = ac[6], ac[5]
             alt_m = ac[7]
-
-            # Match by callsign prefix
             is_mil = any(callsign.startswith(p) for p in MIL_PREFIXES)
-
-            # Also flag US/UK aircraft with non-commercial callsign patterns
-            # Commercial flights are typically 2-3 letter airline code + numbers (e.g., UAL123)
-            if not is_mil and origin in MIL_COUNTRIES and callsign:
-                # Military callsigns often have letters mixed in or are all-alpha
-                has_no_digits = not any(c.isdigit() for c in callsign[:3])
-                if has_no_digits and len(callsign) >= 4:
-                    is_mil = True
-
-            if is_mil and not on_ground:
-                r_lat = round(lat, 2) if lat else None
-                r_lon = round(lon, 2) if lon else None
+            if is_mil and not on_ground and lat and lon:
+                r_lat = round(lat, 2)
+                r_lon = round(lon, 2)
                 airframe = identify_airframe(callsign)
                 mil_aircraft.append({
                     "callsign": callsign,
-                    "origin": origin,
+                    "hex": ac[0],
+                    "registration": "",
+                    "aircraft_type": "",
+                    "origin": ac[2] or "",
                     "lat": r_lat,
                     "lon": r_lon,
                     "alt_ft": round(alt_m * 3.281) if alt_m else None,
-                    "location_desc": describe_location(r_lat, r_lon) if r_lat and r_lon else "unknown",
+                    "location_desc": describe_location(r_lat, r_lon),
                     "airframe": airframe[0] if airframe else "Unknown type",
                     "role": airframe[1] if airframe else "Military",
                 })
 
-        print(f"[OpenSky] Total aircraft in ME box: {len(all_aircraft)}, "
-              f"Possible military: {len(mil_aircraft)}")
         return {
-            "status": "ok",
+            "status": "ok (OpenSky fallback)",
+            "source": "opensky",
             "total_aircraft": len(all_aircraft),
             "mil_count": len(mil_aircraft),
-            "mil_aircraft": mil_aircraft[:30],  # top 30
+            "mil_aircraft": mil_aircraft[:30],
         }
-
     except Exception as e:
-        print(f"[OpenSky] Error: {e}")
+        print(f"[OpenSky Fallback] Error: {e}")
         return {"status": "error", "error": str(e), "mil_count": 0, "mil_aircraft": []}
 
 
@@ -567,11 +791,12 @@ def generate_analysis(opensky, polymarket, metaculus, centcom):
     data_summary = f"""
 ## LIVE DATA COLLECTED AT {now_utc.strftime('%Y-%m-%d %H:%M UTC')}
 
-### OpenSky Network (Aircraft in ME bounding box lat 12-42, lon 25-70)
+### Aircraft Tracking (airplanes.live — unfiltered ADS-B, bounding box lat 10-55, lon -10 to 70)
+Source: {opensky.get('source', 'airplanes.live')}
 Status: {opensky['status']}
-Total aircraft detected: {opensky.get('total_aircraft', 'N/A')}
-Possible military aircraft (matching mil callsign prefixes): {opensky.get('mil_count', 0)}
-Military aircraft details: {json.dumps(opensky.get('mil_aircraft', [])[:15], indent=2)}
+Military aircraft detected in region: {opensky.get('mil_count', 0)}
+Global military aircraft broadcasting: {opensky.get('total_aircraft', 'N/A')}
+Military aircraft details (includes type, registration, hex code): {json.dumps(opensky.get('mil_aircraft', [])[:20], indent=2)}
 
 ### Polymarket Iran Prediction Markets
 Status: {polymarket['status']}
@@ -590,14 +815,29 @@ Recent releases: {json.dumps(centcom.get('releases', []), indent=2)}
 
     system_prompt = """You are an intelligence analyst producing a daily open-source intelligence (OSINT) briefing on the US military posture toward Iran. Write in IC (Intelligence Community) style with confidence levels.
 
+CRITICAL INSTRUCTION FOR AIRCRAFT DATA:
+Each aircraft in the data includes pre-computed fields:
+- "airframe": The probable aircraft type (e.g., "C-17A Globemaster III", "RQ-4B Global Hawk")
+- "role": The aircraft's mission role (e.g., "Strategic airlift", "High-altitude ISR drone")
+- "location_desc": A human-readable location (e.g., "near Al Udeid AB, Qatar", "over the Persian Gulf")
+- "origin": Country of origin (e.g., "United States", "United Kingdom")
+
+When describing aircraft detections, write in plain conversational English. Describe what the aircraft ARE and WHERE they are — not callsigns or tail numbers. Group similar aircraft together. Examples of good style:
+- "We can see a British C-17 transport near Kirkuk and a Voyager refuelling aircraft over Iraq."
+- "Two American KC-135 tankers are orbiting over the Persian Gulf, suggesting active refuelling operations."
+- "A Global Hawk surveillance drone is flying over Iran at high altitude — a routine ISR pattern."
+- "Three C-17 heavy transports detected near Gulf bases, consistent with ongoing airlift of equipment."
+
+Do NOT include callsigns (like RCH4521) or raw coordinates in your prose. Keep it readable for a non-specialist audience.
+
 Your output must be a JSON object with exactly these keys:
 {
   "threat_level": "HIGH" or "CRITICAL" or "ELEVATED" or "ROUTINE",
-  "threat_summary": "2-3 sentence summary explaining the threat level and why",
+  "threat_summary": "2-3 sentence summary explaining the threat level. Mention notable aircraft types if significant (e.g. bombers, surveillance drones, tanker surges).",
   "key_judgment": "IC-style key judgment paragraph with confidence level",
-  "overnight_summary": "2-3 sentences: what changed in the last 24 hours — cover both force posture changes (new deployments, aircraft movements, repositioning) and diplomatic/military developments. Be specific about what is new vs unchanged.",
+  "overnight_summary": "2-3 sentences: what changed in the last 24 hours — cover force posture and diplomatic developments. Describe aircraft in plain English.",
   "activity_groups": [
-    {"title": "Group Title", "icon": "critical|notable|routine", "body": "Summary with [Source] tags"}
+    {"title": "Group Title", "icon": "critical|notable|routine", "body": "Summary with [Source] tags. Describe aircraft plainly."}
   ],
   "prediction_markets_summary": "2-3 sentence summary of what prediction markets are saying",
   "diplomatic_summary": "2-3 bullet points on diplomatic situation",
@@ -606,7 +846,7 @@ Your output must be a JSON object with exactly these keys:
 
 Use today's date: """ + date_str + """
 
-Base your analysis on the live data provided AND your knowledge of the ongoing situation. If APIs returned errors, note that data was unavailable and rely on your existing knowledge. Always note that military aircraft frequently fly without transponders so OpenSky data is partial. Keep the language accessible to non-specialists while maintaining IC rigor."""
+Base your analysis on the live data provided AND your knowledge of the ongoing situation. If APIs returned errors, note that data was unavailable and rely on your existing knowledge. Note that the aircraft data comes from airplanes.live (unfiltered ADS-B) which shows military-tagged aircraft including those filtered by other trackers. However, many military aircraft still fly without transponders, so this is a partial picture. Aircraft data now includes type codes, registrations, and hex IDs for richer identification. Keep the language accessible to non-specialists while maintaining IC rigor."""
 
     try:
         resp = requests.post(
@@ -654,14 +894,37 @@ def generate_fallback_analysis(opensky, polymarket, metaculus, centcom):
         top = pm_markets[0]
         pm_summary = f"Top Polymarket market: \"{top['question']}\" at {top['probability']}%."
 
+    # Build plain English aircraft summary for fallback
+    mil_list = opensky.get("mil_aircraft", [])
+    # Group by type for readable summary
+    type_groups = {}
+    for a in mil_list:
+        af = a.get("airframe", "Unknown type")
+        origin = a.get("origin", "")
+        loc = a.get("location_desc", "the region")
+        # Simplify origin
+        country = "American" if "United States" in origin else "British" if "United Kingdom" in origin else "German" if "Germany" in origin else "coalition"
+        key = (country, af)
+        if key not in type_groups:
+            type_groups[key] = []
+        type_groups[key].append(loc)
+
+    ac_parts = []
+    for (country, af), locs in list(type_groups.items())[:6]:
+        if len(locs) == 1:
+            ac_parts.append(f"a {country} {af} {locs[0]}")
+        else:
+            ac_parts.append(f"{len(locs)} {country} {af}s near Gulf bases")
+    ac_str = ", ".join(ac_parts) if ac_parts else "no military aircraft detected"
+
     return {
         "threat_level": "HIGH",
-        "threat_summary": f"US military posture in CENTCOM AOR remains elevated. OpenSky detected {opensky.get('mil_count', 'unknown')} possible military aircraft in the ME bounding box. Diplomatic talks are ongoing but no breakthrough reported. {pm_summary}",
+        "threat_summary": f"US military posture in CENTCOM AOR remains elevated. airplanes.live detected {opensky.get('mil_count', 'unknown')} military aircraft broadcasting ADS-B, including {ac_str}. {pm_summary}",
         "key_judgment": "We assess with moderate confidence that the current US military buildup is designed to create credible strike options while maximizing diplomatic leverage. The force posture is sufficient for limited precision strikes if ordered, though key pre-strike indicators (CSAR forward-staging, NOTAMs, embassy evacuations) have not been publicly confirmed. [AUTO-GENERATED — Claude API key not configured]",
-        "overnight_summary": "This is an automatically generated summary. No major changes in force posture detected in the past 24 hours. For full AI-powered analysis, add your ANTHROPIC_API_KEY to GitHub Secrets. Latest CENTCOM releases: " + "; ".join(centcom.get("releases", [])[:3]),
+        "overnight_summary": f"Automated scan detected {len(mil_list)} military aircraft including {ac_str}. For full AI-powered analysis, add your ANTHROPIC_API_KEY to GitHub Secrets.",
         "activity_groups": [
             {"title": "Data Collection Summary", "icon": "routine",
-             "body": f"OpenSky: {opensky.get('mil_count', 0)} military aircraft detected. Polymarket: {len(pm_markets)} Iran markets tracked. Metaculus: {len(metaculus.get('questions', []))} questions found. CENTCOM: {len(centcom.get('releases', []))} releases. [Automated]"}
+             "body": f"airplanes.live: {opensky.get('mil_count', 0)} military aircraft detected. Polymarket: {len(pm_markets)} Iran markets tracked. Metaculus: {len(metaculus.get('questions', []))} questions found. CENTCOM: {len(centcom.get('releases', []))} releases. [Automated]"}
         ],
         "prediction_markets_summary": pm_summary,
         "diplomatic_summary": "Automated collection only. Add Claude API key for full analysis.",
@@ -806,7 +1069,7 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
 
     # Feed statuses
     feeds_data = [
-        ("OpenSky Network", opensky["status"], f"{opensky.get('total_aircraft', 0)} aircraft / {opensky.get('mil_count', 0)} military", "OAuth2 authenticated" if OPENSKY_CLIENT_ID else "Anonymous (add OPENSKY_CLIENT_ID)"),
+        ("airplanes.live", opensky["status"], f"{opensky.get('mil_count', 0)} military in region / {opensky.get('total_aircraft', 0)} global", "Free · unfiltered · no key required"),
         ("Polymarket Gamma", polymarket["status"], f"{len(polymarket.get('markets', []))} Iran markets", "Free — no auth required"),
         ("Metaculus", metaculus["status"], f"{len(metaculus.get('questions', []))} questions", "Free — no auth required"),
         ("CENTCOM RSS", centcom["status"], f"{len(centcom.get('releases', []))} releases", "Official DoD feed"),
@@ -851,9 +1114,14 @@ def generate_html(analysis, opensky, polymarket, metaculus, centcom):
     for a in opensky.get("mil_aircraft", []):
         ac_for_map.append({
             "callsign": a.get("callsign", ""),
+            "hex": a.get("hex", ""),
+            "registration": a.get("registration", ""),
+            "aircraft_type": a.get("aircraft_type", ""),
             "lat": a.get("lat"),
             "lon": a.get("lon"),
             "alt_ft": a.get("alt_ft"),
+            "gs_knots": a.get("gs_knots"),
+            "track": a.get("track"),
             "origin": a.get("origin", ""),
             "status": a.get("status", "new"),
             "location_desc": a.get("location_desc", ""),
@@ -998,7 +1266,7 @@ table.pt{width:100%;border-collapse:collapse}
 <div class="modal-body">
 <p>Every morning at <strong style="color:var(--text-primary)">5:00 AM GMT</strong>, a script automatically collects data from public sources, sends it to an AI model for analysis, and publishes this page. No human edits the content — it's generated fresh each day.</p>
 <div class="source-grid">
-<div class="source-item"><div class="source-dot" style="background:var(--accent-cyan)"></div><div><div class="source-name">OpenSky Network</div><div class="source-what">Military aircraft tracking</div></div></div>
+<div class="source-item"><div class="source-dot" style="background:var(--accent-cyan)"></div><div><div class="source-name">airplanes.live</div><div class="source-what">Military aircraft tracking</div></div></div>
 <div class="source-item"><div class="source-dot" style="background:var(--accent-amber)"></div><div><div class="source-name">Polymarket</div><div class="source-what">Prediction market odds</div></div></div>
 <div class="source-item"><div class="source-dot" style="background:var(--accent-blue)"></div><div><div class="source-name">Metaculus</div><div class="source-what">Forecaster consensus</div></div></div>
 <div class="source-item"><div class="source-dot" style="background:var(--accent-red)"></div><div><div class="source-name">CENTCOM / DoD</div><div class="source-what">Official military releases</div></div></div>
@@ -1006,7 +1274,7 @@ table.pt{width:100%;border-collapse:collapse}
 <p>The AI reads this data and produces an intelligence-style briefing: a <strong style="color:var(--text-primary)">threat level</strong>, a <strong style="color:var(--text-primary)">key judgment</strong> with confidence level, a summary of <strong style="color:var(--text-primary)">what changed overnight</strong>, and a snapshot of where <strong style="color:var(--text-primary)">prediction markets</strong> stand.</p>
 <p style="color:var(--text-muted);font-size:12px">&#9888; This is an automated OSINT tool, not professional intelligence. Military aircraft often fly without transponders. Prediction markets reflect betting sentiment, not ground truth. Always cross-reference.</p>
 </div>
-<div class="modal-footer">Built with OpenSky · Polymarket · Claude AI · GitHub Actions</div>
+<div class="modal-footer">Built with airplanes.live · Polymarket · Claude AI · GitHub Actions</div>
 </div>
 </div>
 <main class="wrap">
@@ -1046,14 +1314,14 @@ table.pt{width:100%;border-collapse:collapse}
   <div class="cb">{{ACTIVITY_GROUPS}}</div>
 </div>
 
-<div class="sec">Live Aircraft Detection — OpenSky Network</div>
+<div class="sec">Live Aircraft Detection — airplanes.live</div>
 <div class="card full" style="margin-bottom:28px">
   <div class="ch"><span class="ct">✈ Military Aircraft in ME Airspace</span><span class="badge ok">{{MIL_COUNT}} DETECTED / {{TOTAL_AIRCRAFT}} TOTAL</span></div>
   <div class="cb">
     {{MIL_AIRCRAFT_HTML}}
     <div style="margin-top:12px;font-size:11px;color:var(--text-muted)">⚠ Most military aircraft fly without ADS-B transponders. This represents only the fraction that broadcast.</div>
   </div>
-  <div class="srcs"><span class="stag"><a href="https://opensky-network.org" target="_blank">OpenSky Network API</a></span><span class="stag">Free, rate-limited</span></div>
+  <div class="srcs"><span class="stag"><a href="https://airplanes.live" target="_blank">airplanes.live API</a></span><span class="stag">Free · unfiltered · military-tagged</span></div>
 </div>
 
 <div class="card full" style="margin-bottom:28px">
@@ -1130,7 +1398,7 @@ function draw(){
   returning.forEach(ac=>{
     const x=toX(ac.lon),y=toY(ac.lat);
     ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#3a4158';ctx.fill();ctx.strokeStyle='#565e73';ctx.lineWidth=1;ctx.stroke();
-    ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#565e73';ctx.textAlign='left';ctx.fillText(ac.callsign,x+8,y+3);
+    ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#565e73';ctx.textAlign='left';const rlbl=ac.callsign||(ac.registration?ac.registration:ac.hex||'');ctx.fillText(rlbl,x+8,y+3);
   });
   newAc.forEach(ac=>{
     const x=toX(ac.lon),y=toY(ac.lat);const cat=getCat(ac.callsign);
@@ -1139,7 +1407,7 @@ function draw(){
     // Dot
     ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=cat.c+'90';ctx.fill();ctx.strokeStyle=cat.c;ctx.lineWidth=2;ctx.stroke();
     // Label
-    ctx.font='bold 9px IBM Plex Mono,monospace';ctx.fillStyle=cat.c;ctx.textAlign='left';ctx.fillText(ac.callsign,x+10,y-4);ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#8b93a8';ctx.fillText(cat.t,x+10,y+7);
+    ctx.font='bold 9px IBM Plex Mono,monospace';ctx.fillStyle=cat.c;ctx.textAlign='left';const lbl=ac.callsign||(ac.registration?ac.registration:ac.hex||'');ctx.fillText(lbl,x+10,y-4);ctx.font='8px IBM Plex Mono,monospace';ctx.fillStyle='#8b93a8';ctx.fillText(ac.airframe||cat.t,x+10,y+7);
   });
 }
 function resize(){W=wrap.clientWidth;H=wrap.clientHeight;canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw()}
@@ -1150,7 +1418,7 @@ wrap.addEventListener('mousemove',e=>{
   const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let found=null;
   for(const ac of aircraft){if(Math.hypot(mx-toX(ac.lon),my-toY(ac.lat))<16){found=ac;break}}
   if(!found)for(const b of bases){if(Math.hypot(mx-toX(b.lon),my-toY(b.lat))<12){found={callsign:b.name,origin:'',alt_ft:null,status:'base'};break}}
-  if(found&&found!==hov){hov=found;const cat=found.status==='base'?{t:'US/Coalition Base',c:'#565e73'}:getCat(found.callsign);const st=found.status==='new'?'<span style="color:#40c8e8">★ NEW — not seen yesterday</span>':found.status==='returning'?'<span style="color:#565e73">Still present from yesterday</span>':'';let h='<div style="font-weight:600;color:#40c8e8;font-size:12px">'+found.callsign+'</div>';if(found.airframe)h+='<div style="color:#e8eaf0;margin-top:3px;font-size:11px;font-weight:500">'+found.airframe+'</div>';if(found.role)h+='<div style="color:#8b93a8;font-size:10px">'+found.role+'</div>';if(found.location_desc)h+='<div style="color:#8b93a8;margin-top:3px;font-size:10px">📍 '+found.location_desc+'</div>';if(found.alt_ft)h+='<div style="color:#565e73;font-size:10px">'+found.alt_ft.toLocaleString()+' ft · '+found.origin+'</div>';h+='<div style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;margin-top:5px;background:'+cat.c+'20;color:'+cat.c+'">'+cat.t+'</div>';if(st)h+='<div style="margin-top:4px;font-size:9px">'+st+'</div>';tip.innerHTML=h;tip.style.left=Math.min(mx+16,W-220)+'px';tip.style.top=(my-10)+'px';tip.style.opacity='1'}else if(!found){hov=null;tip.style.opacity='0'}
+  if(found&&found!==hov){hov=found;const cat=found.status==='base'?{t:'US/Coalition Base',c:'#565e73'}:getCat(found.callsign);const st=found.status==='new'?'<span style="color:#40c8e8">★ NEW — not seen yesterday</span>':found.status==='returning'?'<span style="color:#565e73">Still present from yesterday</span>':'';let label=found.callsign||(found.registration?found.registration:found.hex||'Unknown');let h='<div style="font-weight:600;color:#40c8e8;font-size:12px">'+label+'</div>';if(found.registration&&found.callsign)h+='<div style="color:#565e73;font-size:9px">Reg: '+found.registration+' · Hex: '+(found.hex||'')+'</div>';if(found.airframe)h+='<div style="color:#e8eaf0;margin-top:3px;font-size:11px;font-weight:500">'+found.airframe+'</div>';if(found.role)h+='<div style="color:#8b93a8;font-size:10px">'+found.role+'</div>';if(found.location_desc)h+='<div style="color:#8b93a8;margin-top:3px;font-size:10px">📍 '+found.location_desc+'</div>';let altLine='';if(found.alt_ft)altLine+=found.alt_ft.toLocaleString()+' ft';if(found.gs_knots)altLine+=(altLine?' · ':'')+found.gs_knots+' kts';if(found.origin)altLine+=(altLine?' · ':'')+found.origin;if(altLine)h+='<div style="color:#565e73;font-size:10px">'+altLine+'</div>';h+='<div style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:9px;margin-top:5px;background:'+cat.c+'20;color:'+cat.c+'">'+cat.t+'</div>';if(st)h+='<div style="margin-top:4px;font-size:9px">'+st+'</div>';tip.innerHTML=h;tip.style.left=Math.min(mx+16,W-220)+'px';tip.style.top=(my-10)+'px';tip.style.opacity='1'}else if(!found){hov=null;tip.style.opacity='0'}
 });
 wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
 })();
@@ -1185,7 +1453,7 @@ wrap.addEventListener('mouseleave',()=>{hov=null;tip.style.opacity='0'});
 
 </main>
 <div class="bar">
-  <div>Generated by update.py · Data: OpenSky, Polymarket, Metaculus, CENTCOM RSS · Analysis: Claude Haiku 4.5</div>
+  <div>Generated by update.py · Data: airplanes.live, Polymarket, Metaculus, CENTCOM RSS · Analysis: Claude Haiku 4.5</div>
   <div>IRAN WATCH v3.0 — UNCLASSIFIED // OPEN SOURCE</div>
 </div>
 </body></html>"""
@@ -1301,7 +1569,7 @@ def main():
         f.write(html)
 
     print(f"\n[Done] Written to {output_path}")
-    print(f"  OpenSky: {opensky['status']} ({opensky.get('mil_count', 0)} mil aircraft)")
+    print(f"  airplanes.live: {opensky['status']} ({opensky.get('mil_count', 0)} mil aircraft)")
     print(f"  Polymarket: {polymarket['status']} ({len(polymarket.get('markets', []))} markets)")
     print(f"  Metaculus: {metaculus['status']} ({len(metaculus.get('questions', []))} questions)")
     print(f"  CENTCOM: {centcom['status']} ({len(centcom.get('releases', []))} releases)")
