@@ -568,20 +568,103 @@ def fetch_metaculus():
     KNOWN_IDS = [41594, 31498, 31327, 32764]
     questions = []
     headers = {"Accept": "application/json", "User-Agent": "IranWatch/2.0"}
+
+    def _extract_probability(q_data):
+        """Try multiple JSON paths to find the community prediction probability."""
+        # Path 1: api2 legacy — community_prediction.full.q2
+        cp = q_data.get("community_prediction", {})
+        if isinstance(cp, dict):
+            full = cp.get("full", {})
+            if isinstance(full, dict) and full.get("q2") is not None:
+                return full["q2"]
+        # Path 2: newer — question.aggregations.recency_weighted.latest.centers
+        agg = q_data.get("aggregations", {})
+        if isinstance(agg, dict):
+            rw = agg.get("recency_weighted", {})
+            if isinstance(rw, dict):
+                latest = rw.get("latest", {})
+                if isinstance(latest, dict):
+                    centers = latest.get("centers", [])
+                    if centers: return centers[0]
+                    if latest.get("mean") is not None: return latest["mean"]
+        # Path 3: direct forecast_values or my_forecasts
+        for key in ["forecast_values", "my_forecasts", "metaculus_prediction"]:
+            val = q_data.get(key)
+            if isinstance(val, (int, float)): return val
+            if isinstance(val, dict):
+                for subkey in ["q2", "median", "mean", "latest"]:
+                    if val.get(subkey) is not None: return val[subkey]
+        # Path 4: nested "question" object (new API wraps in post)
+        inner_q = q_data.get("question", {})
+        if isinstance(inner_q, dict):
+            return _extract_probability(inner_q)
+        return None
+
+    def _extract_status(q_data):
+        """Get question status, checking multiple paths."""
+        s = q_data.get("status")
+        if s: return s.lower()
+        s = q_data.get("active_state")
+        if s: return s.lower()
+        inner = q_data.get("question", {})
+        if isinstance(inner, dict):
+            return (inner.get("status") or inner.get("active_state") or "").lower()
+        return ""
+
+    def _extract_title(q_data):
+        t = q_data.get("title") or q_data.get("url_title") or ""
+        inner = q_data.get("question", {})
+        if not t and isinstance(inner, dict):
+            t = inner.get("title") or inner.get("url_title") or ""
+        return t
+
+    def _extract_forecasters(q_data):
+        for key in ["number_of_predictions", "nr_forecasters", "forecasts_count"]:
+            v = q_data.get(key)
+            if v is not None: return v
+        inner = q_data.get("question", {})
+        if isinstance(inner, dict):
+            for key in ["number_of_predictions", "nr_forecasters", "forecasts_count"]:
+                v = inner.get(key)
+                if v is not None: return v
+        return 0
+
     try:
+        # Try known question IDs via both old (api2) and new (api) paths
+        api_paths = [
+            "https://www.metaculus.com/api2/questions/{qid}/",
+            "https://www.metaculus.com/api/posts/{qid}/",
+        ]
         for qid in KNOWN_IDS:
-            try:
-                resp = requests.get(f"https://www.metaculus.com/api2/questions/{qid}/", timeout=10, headers=headers)
-                if resp.status_code == 200:
+            for api_path in api_paths:
+                url = api_path.format(qid=qid)
+                try:
+                    resp = requests.get(url, timeout=10, headers=headers)
+                    if resp.status_code != 200:
+                        print(f"[Metaculus] {url} → HTTP {resp.status_code}")
+                        continue
                     q = resp.json()
-                    cp = q.get("community_prediction", {})
-                    full = cp.get("full", {}) if isinstance(cp, dict) else {}
-                    median = full.get("q2") if isinstance(full, dict) else None
-                    if median is not None and q.get("status") in ("open", "upcoming", ""):
-                        questions.append({"question": q.get("title",""), "probability": round(median*100),
-                            "forecasters": q.get("number_of_predictions", q.get("nr_forecasters",0)),
-                            "url": f"https://www.metaculus.com/questions/{qid}/", "id": qid, "source": "metaculus"})
-            except Exception: pass
+                    title = _extract_title(q)
+                    status = _extract_status(q)
+                    prob = _extract_probability(q)
+                    forecasters = _extract_forecasters(q)
+                    print(f"[Metaculus] Q{qid}: title='{title[:50]}' status='{status}' prob={prob} forecasters={forecasters}")
+                    if prob is not None and status in ("open", "upcoming", "", "active"):
+                        questions.append({
+                            "question": title, "probability": round(prob * 100) if prob <= 1 else round(prob),
+                            "forecasters": forecasters,
+                            "url": f"https://www.metaculus.com/questions/{qid}/",
+                            "id": qid, "source": "metaculus",
+                        })
+                        break  # Got it from this path, don't try alternate
+                    elif prob is not None:
+                        print(f"[Metaculus] Q{qid}: skipped — status '{status}' not in allowed set")
+                        break
+                except Exception as e:
+                    print(f"[Metaculus] Q{qid} error at {url}: {e}")
+                    continue
+
+        # Search for additional questions
         for term in ["iran strike", "iran nuclear", "iran attack"]:
             try:
                 resp = requests.get("https://www.metaculus.com/api2/questions/",
@@ -593,14 +676,17 @@ def fetch_metaculus():
                         qid = q.get("id")
                         if any(x.get("id") == qid for x in questions): continue
                         if any(kw in title for kw in ["iran","tehran","irgc","natanz","fordow"]):
-                            cp = q.get("community_prediction", {})
-                            full = cp.get("full", {}) if isinstance(cp, dict) else {}
-                            median = full.get("q2") if isinstance(full, dict) else None
-                            if median is not None:
-                                questions.append({"question": q.get("title",""), "probability": round(median*100),
-                                    "forecasters": q.get("number_of_predictions", q.get("nr_forecasters",0)),
-                                    "url": f"https://www.metaculus.com/questions/{qid}/", "id": qid, "source": "metaculus"})
-            except Exception: pass
+                            prob = _extract_probability(q)
+                            if prob is not None:
+                                questions.append({"question": q.get("title",""),
+                                    "probability": round(prob * 100) if prob <= 1 else round(prob),
+                                    "forecasters": _extract_forecasters(q),
+                                    "url": f"https://www.metaculus.com/questions/{qid}/",
+                                    "id": qid, "source": "metaculus"})
+                else:
+                    print(f"[Metaculus] Search '{term}' → HTTP {resp.status_code}")
+            except Exception as e:
+                print(f"[Metaculus] Search error '{term}': {e}")
         print(f"[Metaculus] Found {len(questions)} Iran questions")
         return {"status": "ok", "questions": questions[:10]}
     except Exception as e:
