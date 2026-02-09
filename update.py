@@ -480,7 +480,7 @@ def fetch_polymarket():
     print("[Polymarket] Fetching Iran markets...")
     url = "https://gamma-api.polymarket.com/events"
     try:
-        markets, seen = [], set()
+        markets, seen_best = [], {}  # seen_best: norm_key -> (market_dict, volume)
         for tag in ["iran", "middle-east", "geopolitics", "us-foreign-policy"]:
             try:
                 resp = requests.get(url, params={"tag": tag, "active": "true", "closed": "false", "limit": 50}, timeout=15)
@@ -493,23 +493,31 @@ def fetch_polymarket():
                         prices = json.loads(m.get("outcomePrices", "[]"))
                         yes_price = round(float(prices[0]) * 100) if prices else None
                         if yes_price is None: continue
-                        # Dedup
+                        # Aggressive dedup: strip ALL date variants
                         norm = q.replace("?","").strip()
-                        for frag in ["by january","by february","by march","by april","by may","by june","by july","by august","by september","by october","by november","by december","in 2025","in 2026","before 2026","before 2027","by 2026","by 2027"]:
-                            norm = norm.replace(frag, "")
-                        norm = norm.strip()
-                        if norm in seen: continue
-                        seen.add(norm)
+                        norm = re.sub(r'\b(by|before|in|on|after)\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{0,2},?\s*\d{0,4}', '', norm, flags=re.I)
+                        norm = re.sub(r'\b(in|by|before|after)\s+\d{4}\b', '', norm, flags=re.I)
+                        norm = re.sub(r'\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s*\d{0,4}', '', norm, flags=re.I)
+                        norm = re.sub(r'\s+', ' ', norm).strip()
                         cat = "other"
                         if any(x in q for x in ["us strike","us attack","america strike","united states strike"]): cat = "us_strike"
                         elif any(x in q for x in ["israel strike","israel attack","idf strike","israeli strike"]): cat = "israel_strike"
                         elif any(x in q for x in ["ceasefire","peace","deal","agreement","negotiat"]): cat = "ceasefire"
                         elif any(x in q for x in ["nuclear","enrichment","weapon","warhead"]): cat = "nuclear"
                         elif any(x in q for x in ["war","conflict","military","strike","attack"]): cat = "conflict"
-                        markets.append({"question": m.get("question",""), "probability": yes_price,
+                        mkt = {"question": m.get("question",""), "probability": yes_price,
                             "volume": m.get("volume","0"), "url": f"https://polymarket.com/event/{ev.get('slug','')}",
-                            "category": cat, "source": "polymarket"})
+                            "category": cat, "source": "polymarket"}
+                        vol = float(mkt.get("volume", 0))
+                        # Keep the highest-volume version of each dedup group
+                        if norm in seen_best:
+                            if vol > seen_best[norm][1]:
+                                seen_best[norm] = (mkt, vol)
+                        else:
+                            seen_best[norm] = (mkt, vol)
             except Exception: pass
+        # Assemble from dedup groups
+        markets = [mkt for mkt, vol in seen_best.values()]
         cat_order = {"us_strike":0,"israel_strike":1,"conflict":2,"nuclear":3,"ceasefire":4,"other":5}
         markets.sort(key=lambda x: (cat_order.get(x.get("category","other"),5), -float(x.get("volume",0))))
         print(f"[Polymarket] Found {len(markets)} Iran markets (deduped)")
@@ -1083,8 +1091,23 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 @media(max-width:768px){.grid2{grid-template-columns:1fr}.hdr-inner{padding:12px 16px}.main{padding:16px 16px 80px}.threat{flex-direction:column;gap:12px}.brand-text{font-size:14px;letter-spacing:3px}.mkt{flex-direction:column;align-items:flex-start;gap:8px}.mkt-right{text-align:left;display:flex;align-items:center;gap:12px}.mkt-prob{font-size:18px}.map-wrap{height:280px}.ac-table{font-size:12px}.judgment{font-size:15px;padding:16px}.sec{font-size:10px}}
 @media(max-width:480px){.brand-text{font-size:12px;letter-spacing:2px}.map-wrap{height:220px}}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.how-btn{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:6px 12px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.how-btn:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(6,182,212,.06)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg3);border:1px solid var(--border);border-radius:10px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;transform:translateY(10px);transition:transform .2s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-top{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border)}
+.modal-t{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--cyan)}
+.modal-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:3px}.modal-x:hover{color:var(--text);background:var(--bg4)}
+.modal-body{padding:20px 24px 24px}.modal-body p{font-size:13.5px;line-height:1.7;color:var(--text2);margin-bottom:14px}.modal-body p:last-child{margin-bottom:0}
+.modal-body strong{color:var(--text)}
+.src-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.src-item{background:var(--bg4);border-radius:5px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.src-item .src-name{color:var(--cyan);font-weight:600}.src-item .src-desc{color:var(--text4);font-size:10px;margin-top:2px}
 </style></head><body>
-<div class="hdr"><div class="hdr-inner"><div class="brand"><div class="pulse"></div><div class="brand-text">Iran Watch</div></div><div class="hdr-right"><strong>{{DATE}}</strong>Updated {{TIME}} &middot; 6-hour cycle</div></div></div>
+<div class="hdr"><div class="hdr-inner"><div class="brand"><div class="pulse"></div><div class="brand-text">Iran Watch</div></div><div style="display:flex;align-items:center;gap:14px"><button class="how-btn" onclick="document.getElementById('howModal').classList.add('open')">How it works</button><div class="hdr-right"><strong>{{DATE}}</strong>Updated {{TIME}} &middot; 6-hour cycle</div></div></div></div>
+<div class="modal-bg" id="howModal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><div class="modal-top"><div class="modal-t">How Iran Watch Works</div><button class="modal-x" onclick="document.getElementById('howModal').classList.remove('open')">&times;</button></div><div class="modal-body"><p><strong>Iran Watch</strong> is an automated open-source intelligence (OSINT) monitor that tracks US military posture toward Iran. It updates every 6 hours via GitHub Actions.</p><p>A Python script queries 7 free data sources, then sends the collected data to Claude (Anthropic's AI) for IC-style analysis with confidence levels and threat assessments.</p><div class="src-grid"><div class="src-item"><div class="src-name">airplanes.live</div><div class="src-desc">Military aircraft via ADS-B</div></div><div class="src-item"><div class="src-name">Polymarket</div><div class="src-desc">Prediction market prices</div></div><div class="src-item"><div class="src-name">Kalshi</div><div class="src-desc">Regulated prediction markets</div></div><div class="src-item"><div class="src-name">Metaculus</div><div class="src-desc">Community forecasting</div></div><div class="src-item"><div class="src-name">USNI News</div><div class="src-desc">Carrier strike group tracker</div></div><div class="src-item"><div class="src-name">CENTCOM</div><div class="src-desc">Press releases &amp; statements</div></div><div class="src-item"><div class="src-name">Claude Search</div><div class="src-desc">Diplomatic context via web</div></div><div class="src-item"><div class="src-name">History</div><div class="src-desc">7-day rolling baseline</div></div></div><p>The analytical framework draws on Cynthia Grabo's <em style="color:var(--amber)">Anticipating Surprise</em> (DIA, 2002). Aircraft detection is partial — most military flights disable transponders. Prediction markets are shown with 24-hour and 7-day probability changes.</p><p style="color:var(--text4);font-size:12px">Built with Python, Claude Haiku 4.5, and GitHub Pages. Total cost ~$4-8/month.</p></div></div></div>
 <div class="main">
 <div class="threat {{TL}}"><div class="tl-badge {{TL}}">{{THREAT_LEVEL}}</div><div class="threat-body"><p>{{THREAT_SUMMARY}}</p><div class="scale"><span style="background:rgba(34,197,94,.15);color:var(--green)">ROUTINE</span> <span style="background:rgba(59,130,246,.15);color:var(--blue)">ELEVATED</span> <span style="background:rgba(245,158,11,.15);color:var(--amber)">HIGH</span> <span style="background:rgba(239,68,68,.15);color:var(--red)">CRITICAL</span></div></div></div>
 <div class="judgment">{{KEY_JUDGMENT}}</div>
